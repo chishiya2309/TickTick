@@ -36,4 +36,8 @@
 
     <!-- Task sections -->
     <string name="section_unsorted">Không được Phân đoạn</string>
+
+    <!-- Add Task Bottom Sheet -->
+    <string name="hint_task_title">Bạn thích làm gì?</string>
+    <string name="hint_task_description">Mô tả</string>
 </resources>

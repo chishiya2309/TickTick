@@ -40,6 +40,9 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 import android.widget.ImageView;
+import android.text.TextUtils;
+import android.widget.EditText;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -298,16 +301,7 @@ public class MainActivity extends AppCompatActivity {
     // ═══════════════════════════════════════
     private void setupFab() {
         FloatingActionButton fab = findViewById(R.id.fab_add_task);
-        fab.setOnClickListener(v -> {
-            // Thêm task mới vào danh sách hiện tại
-            String defaultTitle = "Task mới";
-            dbHelper.insertTask(defaultTitle, currentListId, "");
-
-            // Reload danh sách
-            loadTasksForList(currentListId);
-            Toast.makeText(this, "Đã thêm task vào " +
-                    dbHelper.getListNameById(currentListId), Toast.LENGTH_SHORT).show();
-        });
+        fab.setOnClickListener(v -> showAddTaskBottomSheet());
 
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         bottomNav.post(() -> {
@@ -316,6 +310,57 @@ public class MainActivity extends AppCompatActivity {
             params.bottomMargin = bottomNav.getHeight() + dpToPx(16);
             fab.setLayoutParams(params);
         });
+    }
+
+    private void showAddTaskBottomSheet() {
+        BottomSheetDialog bottomSheet = new BottomSheetDialog(this, R.style.BottomSheetDialogTheme);
+        View sheetView = getLayoutInflater().inflate(R.layout.layout_bottom_sheet_add_task, null);
+        bottomSheet.setContentView(sheetView);
+
+        // Inputs
+        EditText inputTitle = sheetView.findViewById(R.id.input_task_title);
+        EditText inputDescription = sheetView.findViewById(R.id.input_task_description);
+        TextView textCurrentList = sheetView.findViewById(R.id.text_current_list);
+
+        // Hiện tên danh sách hiện tại
+        String currentListName = dbHelper.getListNameById(currentListId);
+        textCurrentList.setText(currentListName);
+
+        // Action buttons (chỉ Toast placeholder)
+        sheetView.findViewById(R.id.action_date).setOnClickListener(v ->
+                Toast.makeText(this, "Chọn ngày", Toast.LENGTH_SHORT).show());
+        sheetView.findViewById(R.id.action_flag).setOnClickListener(v ->
+                Toast.makeText(this, "Đánh dấu ưu tiên", Toast.LENGTH_SHORT).show());
+        sheetView.findViewById(R.id.action_reminder).setOnClickListener(v ->
+                Toast.makeText(this, "Đặt nhắc nhở", Toast.LENGTH_SHORT).show());
+        sheetView.findViewById(R.id.action_more_options).setOnClickListener(v ->
+                Toast.makeText(this, "Thêm tùy chọn", Toast.LENGTH_SHORT).show());
+        sheetView.findViewById(R.id.action_mic).setOnClickListener(v ->
+                Toast.makeText(this, "Ghi âm", Toast.LENGTH_SHORT).show());
+
+        // Nút gửi — Lưu task vào DB
+        sheetView.findViewById(R.id.btn_submit_task).setOnClickListener(v -> {
+            String title = inputTitle.getText().toString().trim();
+
+            if (TextUtils.isEmpty(title)) {
+                inputTitle.setError("Nhập tiêu đề task");
+                inputTitle.requestFocus();
+                return;
+            }
+
+            // Lưu vào SQLite
+            dbHelper.insertTask(title, currentListId, "");
+
+            // Reload danh sách và đóng bottom sheet
+            loadTasksForList(currentListId);
+            bottomSheet.dismiss();
+
+            Toast.makeText(this, "Đã thêm: " + title, Toast.LENGTH_SHORT).show();
+        });
+
+        // Hiển thị Bottom Sheet và auto-focus vào ô tiêu đề
+        bottomSheet.show();
+        inputTitle.requestFocus();
     }
 
     // ═══════════════════════════════════════
