@@ -29,4 +29,11 @@
     <string name="popup_item_list">Danh sách</string>
     <string name="popup_item_filter">Bộ lọc</string>
     <string name="popup_item_tag">Thẻ</string>
+
+    <!-- Empty State -->
+    <string name="empty_no_tasks">Không có nhiệm vụ</string>
+    <string name="empty_tap_to_add">Nhấn vào nút + để thêm</string>
+
+    <!-- Task sections -->
+    <string name="section_unsorted">Không được Phân đoạn</string>
 </resources>

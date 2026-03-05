@@ -2,18 +2,39 @@ package hcmute.edu.vn.lequanghung_23110110.ticktick.model;
 
 public class TaskModel {
 
+    private int id;         // DB primary key
     private String title;
+    private int listId;     // FK → lists._id
     private String dateTag;
     private boolean isCompleted;
 
-    public TaskModel(String title, String dateTag, boolean isCompleted) {
+    // Constructor đầy đủ (từ DB)
+    public TaskModel(int id, String title, int listId, String dateTag, boolean isCompleted) {
+        this.id = id;
         this.title = title;
+        this.listId = listId;
         this.dateTag = dateTag;
         this.isCompleted = isCompleted;
     }
 
+    // Constructor tạo mới (chưa có id)
+    public TaskModel(String title, int listId, String dateTag) {
+        this.id = -1;
+        this.title = title;
+        this.listId = listId;
+        this.dateTag = dateTag;
+        this.isCompleted = false;
+    }
+
+    // --- Getters & Setters ---
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
+
+    public int getListId() { return listId; }
+    public void setListId(int listId) { this.listId = listId; }
 
     public String getDateTag() { return dateTag; }
     public void setDateTag(String dateTag) { this.dateTag = dateTag; }

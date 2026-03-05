@@ -5,6 +5,8 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -23,19 +25,21 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.widget.PopupWindow;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.DrawerMenuAdapter;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.TaskAdapter;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
-
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
-import android.view.ViewGroup;
-import android.widget.PopupWindow;
+import android.widget.ImageView;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -43,6 +47,17 @@ public class MainActivity extends AppCompatActivity {
     private TaskAdapter taskAdapter;
     private List<TaskModel> taskList;
     private DrawerLayout drawerLayout;
+    private View emptyStateContainer;
+    private TextView toolbarTitle;
+    private ImageView toolbarListIcon;
+
+    // SQLite
+    private TaskDatabaseHelper dbHelper;
+    private int currentListId = 1;  // Mặc định: "Hôm nay" (list_id=1)
+
+    // Drawer
+    private DrawerMenuAdapter drawerAdapter;
+    private List<DrawerMenuItem> drawerItems;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,14 +65,16 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
-        // Edge-to-edge: chỉ padding top cho root, bottom nav tự xử lý bottom
+        // Khởi tạo Database
+        dbHelper = TaskDatabaseHelper.getInstance(this);
+
+        // Edge-to-edge
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
             return insets;
         });
 
-        // Bottom Navigation: padding bottom
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         ViewCompat.setOnApplyWindowInsetsListener(bottomNav, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -65,54 +82,131 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
+        // Views
+        emptyStateContainer = findViewById(R.id.empty_state_container);
+        toolbarTitle = findViewById(R.id.toolbar_title);
+        toolbarListIcon = findViewById(R.id.toolbar_list_icon);
+
         setupToolbar();
         setupDrawer();
-        setupRecyclerView();
+        setupTaskRecyclerView();
         setupFab();
         setupBottomNavigation();
         setupBackPressHandler();
+
+        // Load tasks mặc định cho "Hôm nay"
+        loadTasksForList(currentListId);
+    }
+
+    private void updateToolbarForList(String listName, int iconResId) {
+        toolbarTitle.setText(listName);
+
+        if (iconResId != 0) {
+            toolbarListIcon.setImageResource(iconResId);
+            toolbarListIcon.setVisibility(View.VISIBLE);
+        } else {
+            toolbarListIcon.setVisibility(View.GONE);
+        }
     }
 
     private int dpToPx(int dp) {
         return (int) (dp * Resources.getSystem().getDisplayMetrics().density);
     }
 
+    // ═══════════════════════════════════════
+    //  TOOLBAR
+    // ═══════════════════════════════════════
     private void setupToolbar() {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
-
-        // Hamburger → mở drawer
         toolbar.setNavigationOnClickListener(v -> {
             if (drawerLayout != null) {
+                // Refresh badge counts mỗi khi mở drawer
+                refreshDrawerBadges();
                 drawerLayout.openDrawer(GravityCompat.START);
             }
         });
     }
 
     // ═══════════════════════════════════════
-    //  DRAWER SETUP — Custom RecyclerView
+    //  LOAD TASKS TỪ SQLITE
+    // ═══════════════════════════════════════
+
+    /**
+     * Load tasks cho danh sách được chọn.
+     * - Nếu 0 tasks → hiện Empty State
+     * - Nếu ≥1 task → hiện RecyclerView
+     */
+    private void loadTasksForList(int listId, int iconResId) {
+        currentListId = listId;
+
+        List<TaskModel> tasks = dbHelper.getTasksByListId(listId);
+        String listName = dbHelper.getListNameById(listId);
+
+        // Cập nhật toolbar với cả icon
+        updateToolbarForList(listName, iconResId);
+
+        // Update task list
+        taskList.clear();
+        taskList.addAll(tasks);
+        taskAdapter.notifyDataSetChanged();
+
+        // Toggle empty state vs task list
+        if (tasks.isEmpty()) {
+            emptyStateContainer.setVisibility(View.VISIBLE);
+            taskRecyclerView.setVisibility(View.GONE);
+        } else {
+            emptyStateContainer.setVisibility(View.GONE);
+            taskRecyclerView.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private int getIconResIdForList(String listName) {
+        switch (listName) {
+            case "Hôm nay":          return R.drawable.ic_today;
+            case "Hộp thư đến":      return R.drawable.ic_inbox;
+            case "Work":             return R.drawable.ic_work;
+            case "Personal":         return R.drawable.ic_personal;
+            case "Shopping":         return R.drawable.ic_shopping;
+            case "Learning":         return R.drawable.ic_learning;
+            case "Wish List":        return R.drawable.ic_wishlist;
+            case "Fitness":          return R.drawable.ic_fitness;
+            default:                 return 0; // Không có icon
+        }
+    }
+
+    private void loadTasksForList(int listId) {
+        String listName = dbHelper.getListNameById(listId);
+        loadTasksForList(listId, getIconResIdForList(listName));
+    }
+
+    // ═══════════════════════════════════════
+    //  DRAWER SETUP
     // ═══════════════════════════════════════
     private void setupDrawer() {
         drawerLayout = findViewById(R.id.drawer_layout);
 
-        // RecyclerView trong drawer
         RecyclerView drawerRecyclerView = findViewById(R.id.drawer_recycler_view);
         drawerRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        // Tạo danh sách items
-        List<DrawerMenuItem> drawerItems = buildDrawerMenuItems();
-
-        // Adapter
-        DrawerMenuAdapter drawerAdapter = new DrawerMenuAdapter(drawerItems);
+        drawerItems = buildDrawerMenuItems();
+        drawerAdapter = new DrawerMenuAdapter(drawerItems);
         drawerRecyclerView.setAdapter(drawerAdapter);
 
-        // Click listener
+        // Click → load tasks cho danh sách đó
         drawerAdapter.setOnItemClickListener((item, position) -> {
+            if (item.getType() == DrawerMenuItem.ItemType.SEPARATOR) return;
+
             drawerAdapter.setSelectedPosition(position);
-            Toast.makeText(this, item.getTitle(), Toast.LENGTH_SHORT).show();
+
+            int listId = dbHelper.getListIdByName(item.getTitle());
+            if (listId != -1) {
+                loadTasksForList(listId, item.getIconResId());  // Truyền thêm iconResId
+            }
+
             drawerLayout.closeDrawer(GravityCompat.START);
         });
 
@@ -122,120 +216,111 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.drawer_btn_settings).setOnClickListener(v ->
                 Toast.makeText(this, "Cài đặt", Toast.LENGTH_SHORT).show());
 
-        // Bottom bar buttons
+        // Bottom bar
         findViewById(R.id.drawer_btn_add).setOnClickListener(this::showAddMenuPopup);
         findViewById(R.id.drawer_btn_filter).setOnClickListener(v ->
                 Toast.makeText(this, "Bộ lọc", Toast.LENGTH_SHORT).show());
+
+        // Load badge counts ban đầu
+        refreshDrawerBadges();
     }
 
     private List<DrawerMenuItem> buildDrawerMenuItems() {
         List<DrawerMenuItem> items = new ArrayList<>();
 
-        // === Navigation items ===
+        // Navigation items
         items.add(new DrawerMenuItem(
-                getString(R.string.drawer_today),
-                R.drawable.ic_today,
+                "Hôm nay", R.drawable.ic_today,
                 DrawerMenuItem.ItemType.NAVIGATION
-        ).setBadgeCount(1).setSelected(true));  // "Hôm nay" được highlight mặc định
+        ).setSelected(true));
 
         items.add(new DrawerMenuItem(
-                getString(R.string.drawer_inbox),
-                R.drawable.ic_inbox,
+                "Hộp thư đến", R.drawable.ic_inbox,
                 DrawerMenuItem.ItemType.NAVIGATION
         ));
 
         items.add(new DrawerMenuItem(
-                getString(R.string.drawer_calendar_subscribed),
-                R.drawable.ic_calendar_subscribed,
+                "Đã đăng ký Lịch", R.drawable.ic_calendar_subscribed,
                 DrawerMenuItem.ItemType.NAVIGATION
-        ).setHasChevron(true));  // Có mũi tên >
+        ).setHasChevron(true));
 
-        // === Separator ===
+        // Separator
         items.add(DrawerMenuItem.separator());
 
-        // === List items (với icon màu riêng) ===
-        items.add(new DrawerMenuItem(
-                getString(R.string.drawer_work),
-                R.drawable.ic_work,
-                DrawerMenuItem.ItemType.LIST
-        ));
-
-        items.add(new DrawerMenuItem(
-                getString(R.string.drawer_personal),
-                R.drawable.ic_personal,
-                DrawerMenuItem.ItemType.LIST
-        ));
-
-        items.add(new DrawerMenuItem(
-                getString(R.string.drawer_shopping),
-                R.drawable.ic_shopping,
-                DrawerMenuItem.ItemType.LIST
-        ));
-
-        items.add(new DrawerMenuItem(
-                getString(R.string.drawer_learning),
-                R.drawable.ic_learning,
-                DrawerMenuItem.ItemType.LIST
-        ));
-
-        items.add(new DrawerMenuItem(
-                getString(R.string.drawer_wishlist),
-                R.drawable.ic_wishlist,
-                DrawerMenuItem.ItemType.LIST
-        ));
-
-        items.add(new DrawerMenuItem(
-                getString(R.string.drawer_fitness),
-                R.drawable.ic_fitness,
-                DrawerMenuItem.ItemType.LIST
-        ));
+        // List items
+        items.add(new DrawerMenuItem("Work", R.drawable.ic_work, DrawerMenuItem.ItemType.LIST));
+        items.add(new DrawerMenuItem("Personal", R.drawable.ic_personal, DrawerMenuItem.ItemType.LIST));
+        items.add(new DrawerMenuItem("Shopping", R.drawable.ic_shopping, DrawerMenuItem.ItemType.LIST));
+        items.add(new DrawerMenuItem("Learning", R.drawable.ic_learning, DrawerMenuItem.ItemType.LIST));
+        items.add(new DrawerMenuItem("Wish List", R.drawable.ic_wishlist, DrawerMenuItem.ItemType.LIST));
+        items.add(new DrawerMenuItem("Fitness", R.drawable.ic_fitness, DrawerMenuItem.ItemType.LIST));
 
         items.add(DrawerMenuItem.separator());
 
         return items;
     }
 
-    // Xử lý Back press: đóng drawer thay vì thoát app
-    private void setupBackPressHandler() {
-        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
-            @Override
-            public void handleOnBackPressed() {
-                if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-                    drawerLayout.closeDrawer(GravityCompat.START);
-                } else {
-                    setEnabled(false);
-                    getOnBackPressedDispatcher().onBackPressed();
-                }
+    /**
+     * Cập nhật badge count cho mỗi item trong Drawer.
+     * Query 1 lần duy nhất: getAllListTaskCounts() → Map<listId, count>
+     * Rồi match tên danh sách → set badgeCount
+     */
+    private void refreshDrawerBadges() {
+        Map<Integer, Integer> counts = dbHelper.getAllListTaskCounts();
+
+        for (DrawerMenuItem item : drawerItems) {
+            if (item.getType() == DrawerMenuItem.ItemType.SEPARATOR) continue;
+
+            int listId = dbHelper.getListIdByName(item.getTitle());
+            if (listId != -1 && counts.containsKey(listId)) {
+                item.setBadgeCount(counts.get(listId));
+            } else {
+                item.setBadgeCount(0);
             }
-        });
+        }
+        drawerAdapter.notifyDataSetChanged();
     }
 
     // ═══════════════════════════════════════
-
-    private void setupRecyclerView() {
+    //  TASK RECYCLERVIEW
+    // ═══════════════════════════════════════
+    private void setupTaskRecyclerView() {
         taskRecyclerView = findViewById(R.id.task_recycler_view);
         taskRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         taskList = new ArrayList<>();
-        taskList.add(new TaskModel("Test", "Hôm nay", false));
-        taskList.add(new TaskModel("Coursera learning time", "Hôm nay", false));
-
         taskAdapter = new TaskAdapter(taskList);
         taskRecyclerView.setAdapter(taskAdapter);
     }
 
+    // ═══════════════════════════════════════
+    //  FAB — THÊM TASK MỚI
+    // ═══════════════════════════════════════
     private void setupFab() {
         FloatingActionButton fab = findViewById(R.id.fab_add_task);
-        fab.setOnClickListener(v -> Toast.makeText(this, "Thêm công việc mới", Toast.LENGTH_SHORT).show());
+        fab.setOnClickListener(v -> {
+            // Thêm task mới vào danh sách hiện tại
+            String defaultTitle = "Task mới";
+            dbHelper.insertTask(defaultTitle, currentListId, "");
+
+            // Reload danh sách
+            loadTasksForList(currentListId);
+            Toast.makeText(this, "Đã thêm task vào " +
+                    dbHelper.getListNameById(currentListId), Toast.LENGTH_SHORT).show();
+        });
 
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         bottomNav.post(() -> {
-            CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) fab.getLayoutParams();
+            CoordinatorLayout.LayoutParams params =
+                    (CoordinatorLayout.LayoutParams) fab.getLayoutParams();
             params.bottomMargin = bottomNav.getHeight() + dpToPx(16);
             fab.setLayoutParams(params);
         });
     }
 
+    // ═══════════════════════════════════════
+    //  BOTTOM NAVIGATION
+    // ═══════════════════════════════════════
     private void setupBottomNavigation() {
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         bottomNav.setOnItemSelectedListener(item -> {
@@ -251,6 +336,26 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    // ═══════════════════════════════════════
+    //  BACK PRESS
+    // ═══════════════════════════════════════
+    private void setupBackPressHandler() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                }
+            }
+        });
+    }
+
+    // ═══════════════════════════════════════
+    //  MENU
+    // ═══════════════════════════════════════
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.toolbar_menu, menu);
@@ -270,21 +375,19 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    // ═══════════════════════════════════════
+    //  POPUP MENU
+    // ═══════════════════════════════════════
     private void showAddMenuPopup(View anchorView) {
         View popupView = getLayoutInflater().inflate(R.layout.layout_popup_add, null);
 
-        PopupWindow popupWindow = new PopupWindow(
-                popupView,
+        PopupWindow popupWindow = new PopupWindow(popupView,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                true  // focusable → bấm ngoài sẽ đóng
-        );
+                ViewGroup.LayoutParams.WRAP_CONTENT, true);
 
-        // Background transparent để bo góc XML hiển thị đúng
         popupWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         popupWindow.setElevation(8f);
 
-        // Click handlers
         popupView.findViewById(R.id.popup_item_list).setOnClickListener(v -> {
             Toast.makeText(this, "Tạo Danh sách mới", Toast.LENGTH_SHORT).show();
             popupWindow.dismiss();
@@ -300,7 +403,6 @@ public class MainActivity extends AppCompatActivity {
             popupWindow.dismiss();
         });
 
-        // Đo kích thước popup → tính offset trồi lên trên nút
         popupView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         int popupHeight = popupView.getMeasuredHeight();
         int yOffset = -(anchorView.getHeight() + popupHeight + dpToPx(8));

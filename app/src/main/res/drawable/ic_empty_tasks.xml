@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="160dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Background circle -->
+    <path
+        android:fillColor="#2A2A2A"
+        android:pathData="M100,100m-80,0a80,80 0,1 1,160 0a80,80 0,1 1,-160 0" />
+
+    <!-- Clipboard body -->
+    <path
+        android:fillColor="#3A3A3A"
+        android:pathData="M65,45 L135,45 C140,45 145,50 145,55 L145,155 C145,160 140,165 135,165 L65,165 C60,165 55,160 55,155 L55,55 C55,50 60,45 65,45 Z" />
+
+    <!-- Clipboard top clip -->
+    <path
+        android:fillColor="#4C6FE0"
+        android:pathData="M85,35 L115,35 C118,35 120,37 120,40 L120,50 L80,50 L80,40 C80,37 82,35 85,35 Z" />
+
+    <!-- Check line 1 -->
+    <path
+        android:fillColor="#4C6FE0"
+        android:pathData="M75,75 L85,85 L95,70"
+        android:strokeColor="#4C6FE0"
+        android:strokeWidth="4" />
+    <path
+        android:fillColor="#555555"
+        android:pathData="M105,78 L130,78 Q132,78 132,80 L132,82 Q132,84 130,84 L105,84 Q103,84 103,82 L103,80 Q103,78 105,78 Z" />
+
+    <!-- Check line 2 -->
+    <path
+        android:fillColor="#4C6FE0"
+        android:pathData="M75,100 L85,110 L95,95"
+        android:strokeColor="#4C6FE0"
+        android:strokeWidth="4" />
+    <path
+        android:fillColor="#555555"
+        android:pathData="M105,103 L130,103 Q132,103 132,105 L132,107 Q132,109 130,109 L105,109 Q103,109 103,107 L103,105 Q103,103 105,103 Z" />
+
+    <!-- Empty line 3 -->
+    <path
+        android:fillColor="#444444"
+        android:pathData="M75,128 L82,128 Q84,128 84,130 L84,136 Q84,138 82,138 L75,138 Q73,138 73,136 L73,130 Q73,128 75,128 Z" />
+    <path
+        android:fillColor="#555555"
+        android:pathData="M105,130 L130,130 Q132,130 132,132 L132,134 Q132,136 130,136 L105,136 Q103,136 103,134 L103,132 Q103,130 105,130 Z" />
+
+    <!-- Pencil decoration -->
+    <path
+        android:fillColor="#FFA726"
+        android:pathData="M148,52 L155,45 L162,52 L155,59 Z" />
+    <path
+        android:fillColor="#FFA726"
+        android:pathData="M140,60 L148,52 L155,59 L147,67 Z" />
+    <path
+        android:fillColor="#FF7043"
+        android:pathData="M137,63 L140,60 L147,67 L144,70 Z" />
+</vector>
