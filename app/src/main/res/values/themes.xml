@@ -1,12 +1,16 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.TickTick" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/main_accent_blue</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="android:windowBackground">@color/main_bg</item>
+        <item name="android:statusBarColor">@color/main_bg</item>
+        <item name="android:navigationBarColor">@color/main_bottom_nav_bg</item>
     </style>
 
     <style name="Theme.TickTick" parent="Base.Theme.TickTick" />
 
+    <!-- Splash Screen Theme -->
     <style name="Theme.TickTick.Splash" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowBackground">@drawable/splash_gradient_bg</item>
         <item name="android:statusBarColor">@color/splash_bg_dark</item>
