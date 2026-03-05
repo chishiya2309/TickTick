@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/drawer_item_container"
+    android:layout_width="match_parent"
+    android:layout_height="48dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:layout_marginStart="8dp"
+    android:layout_marginEnd="8dp"
+    android:layout_marginTop="2dp"
+    android:layout_marginBottom="2dp"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Icon -->
+    <ImageView
+        android:id="@+id/drawer_item_icon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:scaleType="centerInside" />
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/drawer_item_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="16dp"
+        android:textColor="@color/drawer_item_text"
+        android:textSize="15sp"
+        android:singleLine="true" />
+
+    <!-- Badge (count) -->
+    <TextView
+        android:id="@+id/drawer_item_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="20dp"
+        android:minWidth="20dp"
+        android:gravity="center"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
+        android:background="@drawable/bg_drawer_badge"
+        android:textColor="@color/drawer_badge_text"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <!-- Chevron (>) -->
+    <ImageView
+        android:id="@+id/drawer_item_chevron"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:src="@drawable/ic_chevron_right"
+        android:scaleType="centerInside"
+        android:visibility="gone" />
+
+</LinearLayout>

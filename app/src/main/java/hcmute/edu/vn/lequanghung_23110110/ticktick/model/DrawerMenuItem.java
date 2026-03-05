@@ -1,0 +1,56 @@
+package hcmute.edu.vn.lequanghung_23110110.ticktick.model;
+
+//> **Giải thích**: Model chứa thông tin cho mỗi item trong drawer.
+//> Có thể set `iconResId` cho vector drawable, `badgeCount` cho badge, `hasChevron` cho mũi tên phải.
+public class DrawerMenuItem {
+
+    public enum ItemType {
+        NAVIGATION,  // Hôm nay, Hộp thư đến, Lịch
+        LIST,        // Work, Personal, Shopping...
+        SEPARATOR    // Đường kẻ phân cách
+    }
+
+    private String title;
+    private int iconResId;
+    private ItemType type;
+    private int badgeCount;
+    private boolean hasChevron;
+    private boolean selected;
+
+    // Constructor cho item bình thường
+    public DrawerMenuItem(String title, int iconResId, ItemType type) {
+        this.title = title;
+        this.iconResId = iconResId;
+        this.type = type;
+    }
+
+    // Constructor cho separator
+    public static DrawerMenuItem separator() {
+        DrawerMenuItem item = new DrawerMenuItem("", 0, ItemType.SEPARATOR);
+        return item;
+    }
+
+    // --- Getters & Setters ---
+
+    public String getTitle() { return title; }
+    public int getIconResId() { return iconResId; }
+    public ItemType getType() { return type; }
+
+    public int getBadgeCount() { return badgeCount; }
+    public DrawerMenuItem setBadgeCount(int count) {
+        this.badgeCount = count;
+        return this;
+    }
+
+    public boolean hasChevron() { return hasChevron; }
+    public DrawerMenuItem setHasChevron(boolean hasChevron) {
+        this.hasChevron = hasChevron;
+        return this;
+    }
+
+    public boolean isSelected() { return selected; }
+    public DrawerMenuItem setSelected(boolean selected) {
+        this.selected = selected;
+        return this;
+    }
+}

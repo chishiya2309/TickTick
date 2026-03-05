@@ -22,4 +22,16 @@
     <color name="main_tag_text">#6E9EF5</color>
     <color name="main_checkbox_border">#666666</color>
     <color name="main_icon_tint">#CCCCCC</color>
+
+    <!-- Navigation Drawer Colors -->
+    <color name="drawer_bg">#1E1E1E</color>
+    <color name="drawer_header_bg">#1E1E1E</color>
+    <color name="drawer_item_selected_bg">#2A3A5C</color>
+    <color name="drawer_item_text">#E0E0E0</color>
+    <color name="drawer_item_text_selected">#FFFFFF</color>
+    <color name="drawer_icon_tint">#B0B0B0</color>
+    <color name="drawer_badge_bg">#4C6FE0</color>
+    <color name="drawer_badge_text">#FFFFFF</color>
+    <color name="drawer_separator">#333333</color>
+    <color name="drawer_bottom_bar_bg">#1A1A1A</color>
 </resources>
