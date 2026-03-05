@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">TickTick</string>
+    <string name="splash_tagline">Quản lý công việc hiệu quả</string>
 </resources>

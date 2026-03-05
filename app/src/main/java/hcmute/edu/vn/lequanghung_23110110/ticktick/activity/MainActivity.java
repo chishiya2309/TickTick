@@ -1,4 +1,4 @@
-package hcmute.edu.vn.lequanghung_23110110.ticktick;
+package hcmute.edu.vn.lequanghung_23110110.ticktick.activity;
 
 import android.os.Bundle;
 
@@ -7,6 +7,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+
+import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
 
 public class MainActivity extends AppCompatActivity {
 
