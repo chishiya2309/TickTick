@@ -24,4 +24,9 @@
     <string name="drawer_add">Thêm</string>
     <string name="drawer_search">Tìm kiếm</string>
     <string name="drawer_settings">Cài đặt</string>
+
+    <!-- Drawer & Popups -->
+    <string name="popup_item_list">Danh sách</string>
+    <string name="popup_item_filter">Bộ lọc</string>
+    <string name="popup_item_tag">Thẻ</string>
 </resources>

@@ -4,6 +4,7 @@ import android.content.res.Resources;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -30,6 +31,11 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.DrawerMenuAdapter;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.TaskAdapter;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
+
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.view.ViewGroup;
+import android.widget.PopupWindow;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -60,11 +66,11 @@ public class MainActivity extends AppCompatActivity {
         });
 
         setupToolbar();
-        setupDrawer();        // ← MỚI
+        setupDrawer();
         setupRecyclerView();
         setupFab();
         setupBottomNavigation();
-        setupBackPressHandler(); // ← MỚI
+        setupBackPressHandler();
     }
 
     private int dpToPx(int dp) {
@@ -117,8 +123,7 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "Cài đặt", Toast.LENGTH_SHORT).show());
 
         // Bottom bar buttons
-        findViewById(R.id.drawer_btn_add).setOnClickListener(v ->
-                Toast.makeText(this, "Thêm danh sách", Toast.LENGTH_SHORT).show());
+        findViewById(R.id.drawer_btn_add).setOnClickListener(this::showAddMenuPopup);
         findViewById(R.id.drawer_btn_filter).setOnClickListener(v ->
                 Toast.makeText(this, "Bộ lọc", Toast.LENGTH_SHORT).show());
     }
@@ -263,5 +268,43 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void showAddMenuPopup(View anchorView) {
+        View popupView = getLayoutInflater().inflate(R.layout.layout_popup_add, null);
+
+        PopupWindow popupWindow = new PopupWindow(
+                popupView,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                true  // focusable → bấm ngoài sẽ đóng
+        );
+
+        // Background transparent để bo góc XML hiển thị đúng
+        popupWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        popupWindow.setElevation(8f);
+
+        // Click handlers
+        popupView.findViewById(R.id.popup_item_list).setOnClickListener(v -> {
+            Toast.makeText(this, "Tạo Danh sách mới", Toast.LENGTH_SHORT).show();
+            popupWindow.dismiss();
+        });
+
+        popupView.findViewById(R.id.popup_item_filter).setOnClickListener(v -> {
+            Toast.makeText(this, "Tạo Bộ lọc mới", Toast.LENGTH_SHORT).show();
+            popupWindow.dismiss();
+        });
+
+        popupView.findViewById(R.id.popup_item_tag).setOnClickListener(v -> {
+            Toast.makeText(this, "Tạo Thẻ mới", Toast.LENGTH_SHORT).show();
+            popupWindow.dismiss();
+        });
+
+        // Đo kích thước popup → tính offset trồi lên trên nút
+        popupView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int popupHeight = popupView.getMeasuredHeight();
+        int yOffset = -(anchorView.getHeight() + popupHeight + dpToPx(8));
+
+        popupWindow.showAsDropDown(anchorView, dpToPx(16), yOffset);
     }
 }

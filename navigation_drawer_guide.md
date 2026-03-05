@@ -1241,9 +1241,11 @@ RecyclerView hiển thị danh sách
 ### Cách 1: Dùng ảnh có sẵn trong drawable (Đơn giản nhất)
 
 **Bước 1**: Copy file ảnh (`.png` hoặc `.jpg`) vào thư mục:
+
 ```
 app/src/main/res/drawable/
 ```
+
 Ví dụ: `avatar_test.png` (khuyên dùng kích thước ~200x200px)
 
 **Bước 2**: Trong `layout_drawer_content.xml`, sửa ImageView avatar:
@@ -1341,10 +1343,249 @@ Glide.with(this)
 
 ### Tóm tắt nhanh
 
-| Cách | Độ khó | Hình tròn | Cần thư viện |
-|------|--------|-----------|-------------|
-| 1. `android:src` + drawable | ⭐ | ❌ Vuông | Không |
-| 2. `ShapeableImageView` | ⭐⭐ | ✅ Tròn | Không (Material có sẵn) |
-| 3. Glide | ⭐⭐⭐ | ✅ Tròn | Có (Glide) |
+| Cách                        | Độ khó | Hình tròn | Cần thư viện            |
+| --------------------------- | ------ | --------- | ----------------------- |
+| 1. `android:src` + drawable | ⭐     | ❌ Vuông  | Không                   |
+| 2. `ShapeableImageView`     | ⭐⭐   | ✅ Tròn   | Không (Material có sẵn) |
+| 3. Glide                    | ⭐⭐⭐ | ✅ Tròn   | Có (Glide)              |
 
 > 💡 **Khuyên dùng Cách 2** — đơn giản, hình tròn, không cần thêm thư viện.
+
+---
+
+## 🚀 Thêm: Popup Menu "Thêm Danh Sách" (mới cập nhật)
+
+> Khi nhấn vào nút `Thêm` (+) ở góc dưới bên trái của Drawer, thay vì hiện Toast, chúng ta sẽ mở một **PopupWindow** có góc bo tròn, chứa 3 lựa chọn (Danh sách, Bộ lọc, Thẻ) với hiệu ứng trồi lên như trên screenshot của TickTick.
+
+### Bước 1: Tạo các icon Drawer Items
+
+📁 `app/src/main/res/drawable/ic_list.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="@color/drawer_item_text">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M3,13h2v-2H3v2zm0,4h2v-2H3v2zm0,-8h2V7H3v2zm4,4h14v-2H7v2zm0,4h14v-2H7v2zM7,7v2h14V7H7z" />
+</vector>
+```
+
+📁 `app/src/main/res/drawable/ic_tune_slider.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="@color/drawer_item_text">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M3,17v2h6v-2H3zM3,5v2h10V5H3zM13,21v-2h8v-2h-8v-2h-2v6H13zM7,9v2H3v2h4v2h2V9H7zM21,13v-2H11v2H21zM15,9h2V7h4V5h-4V3h-2V9z" />
+</vector>
+```
+
+📁 `app/src/main/res/drawable/ic_tag.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="@color/drawer_item_text">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M20,10V4h-6L4,14l6,6l10,-10zM17,8c-0.55,0 -1,-0.45 -1,-1s0.45,-1 1,-1 1,0.45 1,1 -0.45,1 -1,1z" />
+</vector>
+```
+
+### Bước 2: Tạo Drawable background cho Popup Menu
+
+📁 `app/src/main/res/drawable/bg_popup_menu.xml`
+Thêm file background shape với góc bo tròn lớn (giống screenshot của TickTick)
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/main_card_bg" /> <!-- Hoặc fix color #212121 tùy bạn chọn màu tối-->
+    <corners android:radius="16dp" />
+</shape>
+```
+
+### Bước 3: Tạo Layout cho Popup
+
+📁 `app/src/main/res/layout/layout_popup_add.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="160dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_popup_menu"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
+    android:elevation="8dp">
+
+    <!-- Danh sách -->
+    <LinearLayout
+        android:id="@+id/popup_item_list"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:clickable="true"
+        android:focusable="true">
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_list" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="Danh sách"
+            android:textColor="@color/drawer_item_text"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <!-- Bộ lọc -->
+    <LinearLayout
+        android:id="@+id/popup_item_filter"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:clickable="true"
+        android:focusable="true">
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_tune_slider" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="Bộ lọc"
+            android:textColor="@color/drawer_item_text"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <!-- Thẻ -->
+    <LinearLayout
+        android:id="@+id/popup_item_tag"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:clickable="true"
+        android:focusable="true">
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_tag" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="Thẻ"
+            android:textColor="@color/drawer_item_text"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+</LinearLayout>
+```
+
+### Bước 4: Sửa Java Code `MainActivity.java`
+
+Mở Java code và sửa lại chỗ `findViewById(R.id.drawer_btn_add).setOnClickListener(...)` trong method `setupDrawer()`. Thêm tính năng mở Popup trồi lên (Popup Window trồi lên trên view).
+
+Thay vì `Toast`, hãy dùng hàm sau và gọi nó lên:
+
+```java
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.PopupWindow;
+
+// ... (các import khác giữ nguyên)
+
+public class MainActivity extends AppCompatActivity {
+
+    // ... (các code cũ)
+
+    private void setupDrawer() {
+        // ... (khởi tạo RecyclerView, adapters ở phía trên)
+
+        // Bottom bar buttons
+        // SỬA: Sẽ bật PopupWindow khi nhấn nút Thêm
+        findViewById(R.id.drawer_btn_add).setOnClickListener(this::showAddMenuPopup);
+
+        findViewById(R.id.drawer_btn_filter).setOnClickListener(v ->
+                Toast.makeText(this, "Bộ lọc", Toast.LENGTH_SHORT).show());
+    }
+
+    // THÔNG SỐ MỚI ĐỂ HIỂN THỊ POPUP PHÍA TRÊN NÚT BẤM
+    private void showAddMenuPopup(View anchorView) {
+        View popupView = getLayoutInflater().inflate(R.layout.layout_popup_add, null);
+
+        // Tạo PopupWindow (WRAP_CONTENT, WRAP_CONTENT) và set focusable = true để bấm outside đóng lại
+        PopupWindow popupWindow = new PopupWindow(popupView,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT, true);
+
+        // Bắt buộc Set Background Transparent để góc bo tròn của file XML được hiển thị
+        popupWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+        // Elevation tạo bóng
+        popupWindow.setElevation(8f);
+
+        // Gắn sự kiện click bên trong Popup Menu
+        popupView.findViewById(R.id.popup_item_list).setOnClickListener(v -> {
+            Toast.makeText(this, "Tạo Danh sách mới", Toast.LENGTH_SHORT).show();
+            popupWindow.dismiss();
+        });
+
+        popupView.findViewById(R.id.popup_item_filter).setOnClickListener(v -> {
+            Toast.makeText(this, "Tạo Bộ lọc mới", Toast.LENGTH_SHORT).show();
+            popupWindow.dismiss();
+        });
+
+        popupView.findViewById(R.id.popup_item_tag).setOnClickListener(v -> {
+            Toast.makeText(this, "Tạo Thẻ mới", Toast.LENGTH_SHORT).show();
+            popupWindow.dismiss();
+        });
+
+        // Xử lý đo đạc kích thước Popup để cho trồi lên phía trên Nút.
+        popupView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int popupHeight = popupView.getMeasuredHeight();
+
+        // showAsDropDown: trồi lên trên anchorView và căn chỉnh tọa độ x/y
+        // popupHeight + height của nút + padding
+        int yOffset = -(anchorView.getHeight() + popupHeight + dpToPx(8));
+
+        popupWindow.showAsDropDown(anchorView, dpToPx(16), yOffset);
+    }
+
+    // ... Các hàm còn lại giữ nguyên
+}
+```
+
+> 💡 **Giải thích cấu trúc**:
+> Với kiểu cấu trúc `PopupWindow` kết hợp với Custom Layout XML (góc bo tròn lớn và có bóng nổi bằng `elevation`), bạn có thể clone 100% cảm giác hiển thị tuỳ ứng dụng gốc của TickTick, đồng thời có thể điều chỉnh khoảng cách (yOffset) cho phù hợp với bất kì thiết bị nào.
