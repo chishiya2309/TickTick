@@ -1,4 +1,12 @@
 <resources>
     <string name="app_name">TickTick</string>
     <string name="splash_tagline">Quản lý công việc hiệu quả</string>
+
+    <string name="today">Hôm nay</string>
+    <string name="add_task">Thêm công việc</string>
+    <string name="menu_more">Thêm tùy chọn</string>
+    <string name="menu_smart_suggest">Gợi ý thông minh</string>
+    <string name="nav_tasks">Công việc</string>
+    <string name="nav_calendar">Lịch</string>
+    <string name="nav_settings">Cài đặt</string>
 </resources>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="14dp"
+    android:background="@color/main_bg">
+
+    <!-- Checkbox -->
+    <CheckBox
+        android:id="@+id/task_checkbox"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:button="@null"
+        android:background="@drawable/checkbox_selector"
+        android:layout_marginEnd="14dp" />
+
+    <!-- Task Title -->
+    <TextView
+        android:id="@+id/task_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="@color/main_text_primary"
+        android:textSize="16sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        tools:text="Task name" />
+
+    <!-- Date Tag -->
+    <TextView
+        android:id="@+id/task_date_tag"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/main_tag_text"
+        android:textSize="12sp"
+        android:layout_marginStart="8dp"
+        tools:text="Hôm nay" />
+
+</LinearLayout>

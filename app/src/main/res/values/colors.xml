@@ -8,4 +8,18 @@
     <color name="splash_accent">#4A90D9</color>
     <color name="splash_text_primary">#FFFFFF</color>
     <color name="splash_text_secondary">#B0BEC5</color>
+
+    <!-- Main Screen Colors (Dark Theme) -->
+    <color name="main_bg">#121212</color>
+    <color name="main_surface">#1E1E1E</color>
+    <color name="main_card_bg">#2A2A2A</color>
+    <color name="main_text_primary">#FFFFFF</color>
+    <color name="main_text_secondary">#B0B0B0</color>
+    <color name="main_accent_blue">#4C6FE0</color>
+    <color name="main_divider">#2E2E2E</color>
+    <color name="main_toolbar_bg">#1A1A1A</color>
+    <color name="main_bottom_nav_bg">#252525</color>
+    <color name="main_tag_text">#6E9EF5</color>
+    <color name="main_checkbox_border">#666666</color>
+    <color name="main_icon_tint">#CCCCCC</color>
 </resources>
