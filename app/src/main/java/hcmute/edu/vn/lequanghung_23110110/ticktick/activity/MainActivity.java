@@ -37,6 +37,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.DrawerMenuAdapter;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.TaskAdapter;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.DatePickerBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 import android.widget.ImageView;
@@ -56,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
 
     // SQLite
     private TaskDatabaseHelper dbHelper;
-    private int currentListId = 1;  // Mặc định: "Hôm nay" (list_id=1)
+    private int currentListId = 1; // Mặc định: "Hôm nay" (list_id=1)
 
     // Drawer
     private DrawerMenuAdapter drawerAdapter;
@@ -117,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ═══════════════════════════════════════
-    //  TOOLBAR
+    // TOOLBAR
     // ═══════════════════════════════════════
     private void setupToolbar() {
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -135,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ═══════════════════════════════════════
-    //  LOAD TASKS TỪ SQLITE
+    // LOAD TASKS TỪ SQLITE
     // ═══════════════════════════════════════
 
     /**
@@ -169,15 +170,24 @@ public class MainActivity extends AppCompatActivity {
 
     private int getIconResIdForList(String listName) {
         switch (listName) {
-            case "Hôm nay":          return R.drawable.ic_today;
-            case "Hộp thư đến":      return R.drawable.ic_inbox;
-            case "Work":             return R.drawable.ic_work;
-            case "Personal":         return R.drawable.ic_personal;
-            case "Shopping":         return R.drawable.ic_shopping;
-            case "Learning":         return R.drawable.ic_learning;
-            case "Wish List":        return R.drawable.ic_wishlist;
-            case "Fitness":          return R.drawable.ic_fitness;
-            default:                 return 0; // Không có icon
+            case "Hôm nay":
+                return R.drawable.ic_today;
+            case "Hộp thư đến":
+                return R.drawable.ic_inbox;
+            case "Work":
+                return R.drawable.ic_work;
+            case "Personal":
+                return R.drawable.ic_personal;
+            case "Shopping":
+                return R.drawable.ic_shopping;
+            case "Learning":
+                return R.drawable.ic_learning;
+            case "Wish List":
+                return R.drawable.ic_wishlist;
+            case "Fitness":
+                return R.drawable.ic_fitness;
+            default:
+                return 0; // Không có icon
         }
     }
 
@@ -187,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ═══════════════════════════════════════
-    //  DRAWER SETUP
+    // DRAWER SETUP
     // ═══════════════════════════════════════
     private void setupDrawer() {
         drawerLayout = findViewById(R.id.drawer_layout);
@@ -201,28 +211,29 @@ public class MainActivity extends AppCompatActivity {
 
         // Click → load tasks cho danh sách đó
         drawerAdapter.setOnItemClickListener((item, position) -> {
-            if (item.getType() == DrawerMenuItem.ItemType.SEPARATOR) return;
+            if (item.getType() == DrawerMenuItem.ItemType.SEPARATOR)
+                return;
 
             drawerAdapter.setSelectedPosition(position);
 
             int listId = dbHelper.getListIdByName(item.getTitle());
             if (listId != -1) {
-                loadTasksForList(listId, item.getIconResId());  // Truyền thêm iconResId
+                loadTasksForList(listId, item.getIconResId()); // Truyền thêm iconResId
             }
 
             drawerLayout.closeDrawer(GravityCompat.START);
         });
 
         // Header buttons
-        findViewById(R.id.drawer_btn_search).setOnClickListener(v ->
-                Toast.makeText(this, "Tìm kiếm", Toast.LENGTH_SHORT).show());
-        findViewById(R.id.drawer_btn_settings).setOnClickListener(v ->
-                Toast.makeText(this, "Cài đặt", Toast.LENGTH_SHORT).show());
+        findViewById(R.id.drawer_btn_search)
+                .setOnClickListener(v -> Toast.makeText(this, "Tìm kiếm", Toast.LENGTH_SHORT).show());
+        findViewById(R.id.drawer_btn_settings)
+                .setOnClickListener(v -> Toast.makeText(this, "Cài đặt", Toast.LENGTH_SHORT).show());
 
         // Bottom bar
         findViewById(R.id.drawer_btn_add).setOnClickListener(this::showAddMenuPopup);
-        findViewById(R.id.drawer_btn_filter).setOnClickListener(v ->
-                Toast.makeText(this, "Bộ lọc", Toast.LENGTH_SHORT).show());
+        findViewById(R.id.drawer_btn_filter)
+                .setOnClickListener(v -> Toast.makeText(this, "Bộ lọc", Toast.LENGTH_SHORT).show());
 
         // Load badge counts ban đầu
         refreshDrawerBadges();
@@ -234,18 +245,15 @@ public class MainActivity extends AppCompatActivity {
         // Navigation items
         items.add(new DrawerMenuItem(
                 "Hôm nay", R.drawable.ic_today,
-                DrawerMenuItem.ItemType.NAVIGATION
-        ).setSelected(true));
+                DrawerMenuItem.ItemType.NAVIGATION).setSelected(true));
 
         items.add(new DrawerMenuItem(
                 "Hộp thư đến", R.drawable.ic_inbox,
-                DrawerMenuItem.ItemType.NAVIGATION
-        ));
+                DrawerMenuItem.ItemType.NAVIGATION));
 
         items.add(new DrawerMenuItem(
                 "Đã đăng ký Lịch", R.drawable.ic_calendar_subscribed,
-                DrawerMenuItem.ItemType.NAVIGATION
-        ).setHasChevron(true));
+                DrawerMenuItem.ItemType.NAVIGATION).setHasChevron(true));
 
         // Separator
         items.add(DrawerMenuItem.separator());
@@ -272,7 +280,8 @@ public class MainActivity extends AppCompatActivity {
         Map<Integer, Integer> counts = dbHelper.getAllListTaskCounts();
 
         for (DrawerMenuItem item : drawerItems) {
-            if (item.getType() == DrawerMenuItem.ItemType.SEPARATOR) continue;
+            if (item.getType() == DrawerMenuItem.ItemType.SEPARATOR)
+                continue;
 
             int listId = dbHelper.getListIdByName(item.getTitle());
             if (listId != -1 && counts.containsKey(listId)) {
@@ -285,7 +294,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ═══════════════════════════════════════
-    //  TASK RECYCLERVIEW
+    // TASK RECYCLERVIEW
     // ═══════════════════════════════════════
     private void setupTaskRecyclerView() {
         taskRecyclerView = findViewById(R.id.task_recycler_view);
@@ -297,7 +306,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ═══════════════════════════════════════
-    //  FAB — THÊM TASK MỚI
+    // FAB — THÊM TASK MỚI
     // ═══════════════════════════════════════
     private void setupFab() {
         FloatingActionButton fab = findViewById(R.id.fab_add_task);
@@ -305,8 +314,7 @@ public class MainActivity extends AppCompatActivity {
 
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         bottomNav.post(() -> {
-            CoordinatorLayout.LayoutParams params =
-                    (CoordinatorLayout.LayoutParams) fab.getLayoutParams();
+            CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) fab.getLayoutParams();
             params.bottomMargin = bottomNav.getHeight() + dpToPx(16);
             fab.setLayoutParams(params);
         });
@@ -317,28 +325,63 @@ public class MainActivity extends AppCompatActivity {
         View sheetView = getLayoutInflater().inflate(R.layout.layout_bottom_sheet_add_task, null);
         bottomSheet.setContentView(sheetView);
 
-        // Inputs
         EditText inputTitle = sheetView.findViewById(R.id.input_task_title);
         EditText inputDescription = sheetView.findViewById(R.id.input_task_description);
         TextView textCurrentList = sheetView.findViewById(R.id.text_current_list);
 
-        // Hiện tên danh sách hiện tại
+        // Date chip views
+        View dateChipContainer = sheetView.findViewById(R.id.date_chip_container);
+        TextView dateChipText = sheetView.findViewById(R.id.date_chip_text);
+        View actionDate = sheetView.findViewById(R.id.action_date);
+
+        // Biến lưu ngày đã chọn (dùng mảng 1 phần tử để truy cập trong lambda)
+        final String[] selectedDateTag = { "" };
+        final long[] selectedDateMillis = { -1 };
+
         String currentListName = dbHelper.getListNameById(currentListId);
         textCurrentList.setText(currentListName);
 
-        // Action buttons (chỉ Toast placeholder)
-        sheetView.findViewById(R.id.action_date).setOnClickListener(v ->
-                Toast.makeText(this, "Chọn ngày", Toast.LENGTH_SHORT).show());
-        sheetView.findViewById(R.id.action_flag).setOnClickListener(v ->
-                Toast.makeText(this, "Đánh dấu ưu tiên", Toast.LENGTH_SHORT).show());
-        sheetView.findViewById(R.id.action_reminder).setOnClickListener(v ->
-                Toast.makeText(this, "Đặt nhắc nhở", Toast.LENGTH_SHORT).show());
-        sheetView.findViewById(R.id.action_more_options).setOnClickListener(v ->
-                Toast.makeText(this, "Thêm tùy chọn", Toast.LENGTH_SHORT).show());
-        sheetView.findViewById(R.id.action_mic).setOnClickListener(v ->
-                Toast.makeText(this, "Ghi âm", Toast.LENGTH_SHORT).show());
+        // ═══ DATE PICKER — Logic chung cho cả icon lịch và chip ═══
+        Runnable openDatePicker = () -> {
+            DatePickerBottomSheet datePicker = new DatePickerBottomSheet();
 
-        // Nút gửi — Lưu task vào DB
+            datePicker.setOnDateSelectedListener((dateTag, dateMillis) -> {
+                selectedDateTag[0] = dateTag;
+                selectedDateMillis[0] = dateMillis;
+                dateChipText.setText(dateTag);
+                dateChipContainer.setVisibility(View.VISIBLE);
+                actionDate.setVisibility(View.GONE);
+                dateChipText.setTextColor(getDateChipColor(dateTag));
+            });
+
+            datePicker.setOnDateClearedListener(() -> {
+                selectedDateTag[0] = "";
+                selectedDateMillis[0] = -1;
+                dateChipContainer.setVisibility(View.GONE);
+                actionDate.setVisibility(View.VISIBLE);
+            });
+
+            if (selectedDateMillis[0] > 0) {
+                datePicker.setPreSelectedDate(selectedDateMillis[0]);
+            }
+
+            datePicker.show(getSupportFragmentManager(), "date_picker");
+        };
+
+        actionDate.setOnClickListener(v -> openDatePicker.run());
+        dateChipContainer.setOnClickListener(v -> openDatePicker.run());
+
+        // Các action khác giữ nguyên...
+        sheetView.findViewById(R.id.action_flag)
+                .setOnClickListener(v -> Toast.makeText(this, "Đánh dấu ưu tiên", Toast.LENGTH_SHORT).show());
+        sheetView.findViewById(R.id.action_reminder)
+                .setOnClickListener(v -> Toast.makeText(this, "Đặt nhắc nhở", Toast.LENGTH_SHORT).show());
+        sheetView.findViewById(R.id.action_more_options)
+                .setOnClickListener(v -> Toast.makeText(this, "Thêm tùy chọn", Toast.LENGTH_SHORT).show());
+        sheetView.findViewById(R.id.action_mic)
+                .setOnClickListener(v -> Toast.makeText(this, "Ghi âm", Toast.LENGTH_SHORT).show());
+
+        // ═══ NÚT GỬI — Lưu task với dateTag ═══
         sheetView.findViewById(R.id.btn_submit_task).setOnClickListener(v -> {
             String title = inputTitle.getText().toString().trim();
 
@@ -348,23 +391,20 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // Lưu vào SQLite
-            dbHelper.insertTask(title, currentListId, "");
+            // Lưu vào SQLite — dùng selectedDateTag[0] làm dateTag
+            dbHelper.insertTask(title, currentListId, selectedDateTag[0]);
 
-            // Reload danh sách và đóng bottom sheet
             loadTasksForList(currentListId);
             bottomSheet.dismiss();
-
             Toast.makeText(this, "Đã thêm: " + title, Toast.LENGTH_SHORT).show();
         });
 
-        // Hiển thị Bottom Sheet và auto-focus vào ô tiêu đề
         bottomSheet.show();
         inputTitle.requestFocus();
     }
 
     // ═══════════════════════════════════════
-    //  BOTTOM NAVIGATION
+    // BOTTOM NAVIGATION
     // ═══════════════════════════════════════
     private void setupBottomNavigation() {
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
@@ -382,7 +422,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ═══════════════════════════════════════
-    //  BACK PRESS
+    // BACK PRESS
     // ═══════════════════════════════════════
     private void setupBackPressHandler() {
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -398,8 +438,23 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private int getDateChipColor(String dateTag) {
+        switch (dateTag) {
+            case "Hôm nay":
+                return Color.parseColor("#4C6FE0");
+            case "Ngày mai":
+                return Color.parseColor("#FFA726");
+            case "Thứ Hai tới":
+                return Color.parseColor("#42A5F5");
+            case "Đến cuối ngày":
+                return Color.parseColor("#66BB6A");
+            default:
+                return Color.parseColor("#B0B0B0");
+        }
+    }
+
     // ═══════════════════════════════════════
-    //  MENU
+    // MENU
     // ═══════════════════════════════════════
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -421,7 +476,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ═══════════════════════════════════════
-    //  POPUP MENU
+    // POPUP MENU
     // ═══════════════════════════════════════
     private void showAddMenuPopup(View anchorView) {
         View popupView = getLayoutInflater().inflate(R.layout.layout_popup_add, null);

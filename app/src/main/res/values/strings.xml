@@ -40,4 +40,18 @@
     <!-- Add Task Bottom Sheet -->
     <string name="hint_task_title">Bạn thích làm gì?</string>
     <string name="hint_task_description">Mô tả</string>
+
+    <!-- Date Picker Bottom Sheet -->
+    <string name="date_tab_date">Ngày</string>
+    <string name="date_tab_duration">Thời lượng</string>
+    <string name="date_today">Hôm nay</string>
+    <string name="date_tomorrow">Ngày mai</string>
+    <string name="date_next_monday">Thứ Hai tới</string>
+    <string name="date_end_of_day">Đến cuối ngày</string>
+    <string name="date_option_time">Thời gian</string>
+    <string name="date_option_reminder">Lời nhắc</string>
+    <string name="date_option_repeat">Lặp lại</string>
+    <string name="date_none">Không có</string>
+
+    <string name="date_clear">Xóa</string>
 </resources>
