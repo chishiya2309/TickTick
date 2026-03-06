@@ -1,6 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-             android:layout_width="match_parent"
-             android:layout_height="match_parent">
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center_horizontal">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <FrameLayout
+        android:id="@+id/card_view_type"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:background="@drawable/bg_rounded_dark_gray">
+        <!-- Có thể chèn Image Thumbnail đại diện cho List / Kanban / Timeline tại đây -->
+
+        <!-- Nút Check hiển thị khi được chọn -->
+        <ImageView
+            android:id="@+id/ic_check_selected"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="4dp"
+            android:src="@drawable/ic_check"
+            android:background="@drawable/bg_circle_blue"
+            android:padding="4dp"
+            android:tint="@android:color/white"
+            android:visibility="gone" /> <!-- Mặc định ẩn, bật lên khi active -->
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/text_view_type"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Danh sách"
+        android:textColor="@color/main_text_secondary"
+        android:textSize="13sp" />
+</LinearLayout>

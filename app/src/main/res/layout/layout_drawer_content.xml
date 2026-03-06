@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="300dp"
     android:layout_height="match_parent"
     android:layout_gravity="start"
@@ -21,13 +22,16 @@
         android:background="@color/drawer_header_bg">
 
         <!-- Avatar -->
-        <ImageView
+        <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/drawer_avatar"
             android:layout_width="36dp"
             android:layout_height="36dp"
-            android:background="@drawable/bg_avatar_circle"
+            android:src="@drawable/avatar"
             android:scaleType="centerCrop"
-            android:contentDescription="Avatar" />
+            android:contentDescription="Avatar"
+            app:shapeAppearanceOverlay="@style/CircleImage"
+            app:strokeColor="@color/main_divider"
+            app:strokeWidth="1dp" />
 
         <!-- User name -->
         <TextView

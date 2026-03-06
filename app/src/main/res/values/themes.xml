@@ -35,4 +35,35 @@
         <item name="cornerSizeBottomLeft">0dp</item>
         <item name="cornerSizeBottomRight">0dp</item>
     </style>
+
+    <style name="CircleImage" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item> <!-- 50% sẽ tạo ra hình tròn hoàn hảo -->
+    </style>
+
+    <style name="TimePickerDarkTheme" parent="ThemeOverlay.Material3.MaterialTimePicker">
+        <!-- Dialog background -->
+        <item name="colorSurface">#2D2D2D</item>
+        <item name="colorSurfaceContainerHigh">#2D2D2D</item>
+        <!-- Text trên dialog -->
+        <item name="colorOnSurface">#E0E0E0</item>
+        <item name="colorOnSurfaceVariant">#B0B0B0</item>
+        <!-- Accent (selected state) -->
+        <item name="colorPrimary">#4C6FE0</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <!-- Input fields -->
+        <item name="colorPrimaryContainer">#3A3A3A</item>
+        <item name="colorOnPrimaryContainer">#FFFFFF</item>
+        <!-- Tertiary (unselected input) -->
+        <item name="colorTertiaryContainer">#3A3A3A</item>
+        <item name="colorOnTertiaryContainer">#B0B0B0</item>
+        <!-- Clock face -->
+        <item name="colorSurfaceVariant">#3A3A3A</item>
+    </style>
+
+    <style name="Theme.TickTick.FullScreenDialog" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@color/main_surface</item>
+    <!-- Tránh top status bar cover mất content -->
+</style>
 </resources>

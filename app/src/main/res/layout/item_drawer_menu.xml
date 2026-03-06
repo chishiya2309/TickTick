@@ -14,12 +14,22 @@
     android:clickable="true"
     android:focusable="true">
 
-    <!-- Icon -->
-    <ImageView
-        android:id="@+id/drawer_item_icon"
+    <FrameLayout
         android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:scaleType="centerInside" />
+        android:layout_height="24dp">
+        <ImageView
+            android:id="@+id/drawer_item_icon"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerInside" />
+        <TextView
+            android:id="@+id/drawer_item_emoji"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:textSize="18sp"
+            android:visibility="gone" />
+    </FrameLayout>
 
     <!-- Title -->
     <TextView

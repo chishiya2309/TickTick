@@ -1,6 +1,255 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#2D2D2D"
+    android:padding="20dp">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <!-- Title -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Lời nhắc"
+        android:textColor="#E0E0E0"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <!-- ═══ PRESET OPTIONS (multi-select) ═══ -->
+
+    <!-- Không có -->
+    <LinearLayout
+        android:id="@+id/reminder_none"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true">
+        <TextView
+            android:id="@+id/text_none"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Không có"
+            android:textColor="#4C6FE0"
+            android:textSize="15sp" />
+        <ImageView
+            android:id="@+id/check_none"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_check_blue"
+            android:visibility="visible" />
+    </LinearLayout>
+
+    <!-- Đúng ngày -->
+    <LinearLayout
+        android:id="@+id/reminder_on_day"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true">
+        <TextView
+            android:id="@+id/text_on_day"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Đúng ngày (09:00)"
+            android:textColor="#B0B0B0"
+            android:textSize="15sp" />
+        <ImageView
+            android:id="@+id/check_on_day"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_check_blue"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- 1 days early -->
+    <LinearLayout
+        android:id="@+id/reminder_1_day"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true">
+        <TextView
+            android:id="@+id/text_1_day"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="1 days early (09:00)"
+            android:textColor="#B0B0B0"
+            android:textSize="15sp" />
+        <ImageView
+            android:id="@+id/check_1_day"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_check_blue"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- 2 days early -->
+    <LinearLayout
+        android:id="@+id/reminder_2_days"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true">
+        <TextView
+            android:id="@+id/text_2_days"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="2 days early (09:00)"
+            android:textColor="#B0B0B0"
+            android:textSize="15sp" />
+        <ImageView
+            android:id="@+id/check_2_days"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_check_blue"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- 3 days early -->
+    <LinearLayout
+        android:id="@+id/reminder_3_days"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true">
+        <TextView
+            android:id="@+id/text_3_days"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="3 days early (09:00)"
+            android:textColor="#B0B0B0"
+            android:textSize="15sp" />
+        <ImageView
+            android:id="@+id/check_3_days"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_check_blue"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- 1 weeks early -->
+    <LinearLayout
+        android:id="@+id/reminder_1_week"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true">
+        <TextView
+            android:id="@+id/text_1_week"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="1 weeks early (09:00)"
+            android:textColor="#B0B0B0"
+            android:textSize="15sp" />
+        <ImageView
+            android:id="@+id/check_1_week"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_check_blue"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="#444444"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp" />
+
+    <!-- Tùy chỉnh → mở custom spinner -->
+    <LinearLayout
+        android:id="@+id/reminder_custom"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true">
+        <TextView
+            android:id="@+id/text_custom"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Tùy chỉnh"
+            android:textColor="#B0B0B0"
+            android:textSize="15sp" />
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@drawable/ic_chevron_right"
+            android:scaleType="centerInside" />
+    </LinearLayout>
+
+    <!-- Nhắc nhở liên tục toggle -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Nhắc nhở liên tục🔔"
+            android:textColor="#B0B0B0"
+            android:textSize="15sp" />
+        <Switch
+            android:id="@+id/switch_continuous"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:id="@+id/btn_reminder_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Hủy bỏ"
+            android:textColor="#B0B0B0"
+            android:textSize="14sp"
+            android:padding="8dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/btn_reminder_ok"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="OK"
+            android:textColor="#4C6FE0"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:padding="8dp"
+            android:layout_marginStart="12dp"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
+</LinearLayout>

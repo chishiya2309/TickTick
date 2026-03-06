@@ -9,8 +9,10 @@ material = "1.13.0"
 activity = "1.12.4"
 constraintlayout = "2.2.1"
 recyclerview = "1.4.0"
+gson = "2.10.1"
 
 [libraries]
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 coordinatorlayout = { module = "androidx.coordinatorlayout:coordinatorlayout", version.ref = "coordinatorlayout" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

@@ -5,13 +5,14 @@ package hcmute.edu.vn.lequanghung_23110110.ticktick.model;
 public class DrawerMenuItem {
 
     public enum ItemType {
-        NAVIGATION,  // Hôm nay, Hộp thư đến, Lịch
-        LIST,        // Work, Personal, Shopping...
-        SEPARATOR    // Đường kẻ phân cách
+        NAVIGATION, // Hôm nay, Hộp thư đến, Lịch
+        LIST, // Work, Personal, Shopping...
+        SEPARATOR // Đường kẻ phân cách
     }
 
     private String title;
-    private int iconResId;
+    private int iconResId; // Dành cho Vector/Drawable
+    private String emojiIcon; // Dành cho Emoji dạng text (ưu tiên nếu khác null)
     private ItemType type;
     private int badgeCount;
     private boolean hasChevron;
@@ -22,6 +23,15 @@ public class DrawerMenuItem {
         this.title = title;
         this.iconResId = iconResId;
         this.type = type;
+        this.emojiIcon = null;
+    }
+
+    // Constructor mới: cho emoji icon (dạng text)
+    public DrawerMenuItem(String title, String emojiIcon, ItemType type) {
+        this.title = title;
+        this.emojiIcon = emojiIcon;
+        this.type = type;
+        this.iconResId = 0;
     }
 
     // Constructor cho separator
@@ -32,23 +42,44 @@ public class DrawerMenuItem {
 
     // --- Getters & Setters ---
 
-    public String getTitle() { return title; }
-    public int getIconResId() { return iconResId; }
-    public ItemType getType() { return type; }
+    public String getTitle() {
+        return title;
+    }
 
-    public int getBadgeCount() { return badgeCount; }
+    public int getIconResId() {
+        return iconResId;
+    }
+
+    public String getEmojiIcon() {
+        return emojiIcon;
+    }
+
+    public ItemType getType() {
+        return type;
+    }
+
+    public int getBadgeCount() {
+        return badgeCount;
+    }
+
     public DrawerMenuItem setBadgeCount(int count) {
         this.badgeCount = count;
         return this;
     }
 
-    public boolean hasChevron() { return hasChevron; }
+    public boolean hasChevron() {
+        return hasChevron;
+    }
+
     public DrawerMenuItem setHasChevron(boolean hasChevron) {
         this.hasChevron = hasChevron;
         return this;
     }
 
-    public boolean isSelected() { return selected; }
+    public boolean isSelected() {
+        return selected;
+    }
+
     public DrawerMenuItem setSelected(boolean selected) {
         this.selected = selected;
         return this;

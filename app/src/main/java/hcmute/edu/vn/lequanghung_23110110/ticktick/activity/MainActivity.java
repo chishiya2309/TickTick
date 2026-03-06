@@ -37,6 +37,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.DrawerMenuAdapter;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.TaskAdapter;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.AddListDialogFragment;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.DatePickerBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
@@ -54,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
     private View emptyStateContainer;
     private TextView toolbarTitle;
     private ImageView toolbarListIcon;
+    private TextView toolbarListEmoji;
 
     // SQLite
     private TaskDatabaseHelper dbHelper;
@@ -90,6 +92,7 @@ public class MainActivity extends AppCompatActivity {
         emptyStateContainer = findViewById(R.id.empty_state_container);
         toolbarTitle = findViewById(R.id.toolbar_title);
         toolbarListIcon = findViewById(R.id.toolbar_list_icon);
+        toolbarListEmoji = findViewById(R.id.toolbar_list_emoji);
 
         setupToolbar();
         setupDrawer();
@@ -102,14 +105,20 @@ public class MainActivity extends AppCompatActivity {
         loadTasksForList(currentListId);
     }
 
-    private void updateToolbarForList(String listName, int iconResId) {
+    private void updateToolbarForList(String listName, int iconResId, String emojiIcon) {
         toolbarTitle.setText(listName);
 
-        if (iconResId != 0) {
+        if (emojiIcon != null && !emojiIcon.isEmpty()) {
+            toolbarListEmoji.setText(emojiIcon);
+            toolbarListEmoji.setVisibility(View.VISIBLE);
+            toolbarListIcon.setVisibility(View.GONE);
+        } else if (iconResId != 0) {
             toolbarListIcon.setImageResource(iconResId);
             toolbarListIcon.setVisibility(View.VISIBLE);
+            toolbarListEmoji.setVisibility(View.GONE);
         } else {
             toolbarListIcon.setVisibility(View.GONE);
+            toolbarListEmoji.setVisibility(View.GONE);
         }
     }
 
@@ -144,14 +153,14 @@ public class MainActivity extends AppCompatActivity {
      * - Nếu 0 tasks → hiện Empty State
      * - Nếu ≥1 task → hiện RecyclerView
      */
-    private void loadTasksForList(int listId, int iconResId) {
+    private void loadTasksForList(int listId, int iconResId, String emojiIcon) {
         currentListId = listId;
 
         List<TaskModel> tasks = dbHelper.getTasksByListId(listId);
         String listName = dbHelper.getListNameById(listId);
 
         // Cập nhật toolbar với cả icon
-        updateToolbarForList(listName, iconResId);
+        updateToolbarForList(listName, iconResId, emojiIcon);
 
         // Update task list
         taskList.clear();
@@ -193,7 +202,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadTasksForList(int listId) {
         String listName = dbHelper.getListNameById(listId);
-        loadTasksForList(listId, getIconResIdForList(listName));
+        // By default, text-based loaded lists without an explicit click might not have
+        // their emoji readily available here
+        // without a DB lookup. Since we load 'Today' by default, it uses a resource ID.
+        // We'll pass null for emoji initially.
+        loadTasksForList(listId, getIconResIdForList(listName), null);
     }
 
     // ═══════════════════════════════════════
@@ -218,7 +231,7 @@ public class MainActivity extends AppCompatActivity {
 
             int listId = dbHelper.getListIdByName(item.getTitle());
             if (listId != -1) {
-                loadTasksForList(listId, item.getIconResId()); // Truyền thêm iconResId
+                loadTasksForList(listId, item.getIconResId(), item.getEmojiIcon()); // Truyền thêm emoji
             }
 
             drawerLayout.closeDrawer(GravityCompat.START);
@@ -251,24 +264,38 @@ public class MainActivity extends AppCompatActivity {
                 "Hộp thư đến", R.drawable.ic_inbox,
                 DrawerMenuItem.ItemType.NAVIGATION));
 
-        items.add(new DrawerMenuItem(
-                "Đã đăng ký Lịch", R.drawable.ic_calendar_subscribed,
-                DrawerMenuItem.ItemType.NAVIGATION).setHasChevron(true));
-
         // Separator
         items.add(DrawerMenuItem.separator());
 
-        // List items
-        items.add(new DrawerMenuItem("Work", R.drawable.ic_work, DrawerMenuItem.ItemType.LIST));
-        items.add(new DrawerMenuItem("Personal", R.drawable.ic_personal, DrawerMenuItem.ItemType.LIST));
-        items.add(new DrawerMenuItem("Shopping", R.drawable.ic_shopping, DrawerMenuItem.ItemType.LIST));
-        items.add(new DrawerMenuItem("Learning", R.drawable.ic_learning, DrawerMenuItem.ItemType.LIST));
-        items.add(new DrawerMenuItem("Wish List", R.drawable.ic_wishlist, DrawerMenuItem.ItemType.LIST));
-        items.add(new DrawerMenuItem("Fitness", R.drawable.ic_fitness, DrawerMenuItem.ItemType.LIST));
+        // Lấy tất cả danh sách (list_id > 2) từ SQLite
+        Map<String, String> customLists = dbHelper.getAllCustomLists();
+        for (Map.Entry<String, String> entry : customLists.entrySet()) {
+            String listName = entry.getKey();
+            String iconName = entry.getValue();
+
+            // Phân biệt Icon Drawable và Emoji Text
+            if (iconName != null && iconName.startsWith("ic_")) {
+                int resId = getResources().getIdentifier(iconName, "drawable", getPackageName());
+                items.add(new DrawerMenuItem(listName, resId, DrawerMenuItem.ItemType.LIST));
+            } else {
+                // iconName có thể là null (List không icon) hoặc emoji
+                items.add(new DrawerMenuItem(listName, iconName, DrawerMenuItem.ItemType.LIST));
+            }
+        }
 
         items.add(DrawerMenuItem.separator());
 
         return items;
+    }
+
+    public void addNewListToDrawer(String name, String emojiIcon) {
+        // Lưu vào DB
+        dbHelper.insertList(name, emojiIcon);
+
+        DrawerMenuItem newItem = new DrawerMenuItem(name, emojiIcon, DrawerMenuItem.ItemType.LIST);
+        // Insert item right before the last separator
+        drawerItems.add(drawerItems.size() - 1, newItem);
+        drawerAdapter.notifyItemInserted(drawerItems.size() - 2);
     }
 
     /**
@@ -337,6 +364,8 @@ public class MainActivity extends AppCompatActivity {
         // Biến lưu ngày đã chọn (dùng mảng 1 phần tử để truy cập trong lambda)
         final String[] selectedDateTag = { "" };
         final long[] selectedDateMillis = { -1 };
+        final int[] selectedHour = { -1 };
+        final int[] selectedMinute = { -1 };
 
         String currentListName = dbHelper.getListNameById(currentListId);
         textCurrentList.setText(currentListName);
@@ -357,12 +386,22 @@ public class MainActivity extends AppCompatActivity {
             datePicker.setOnDateClearedListener(() -> {
                 selectedDateTag[0] = "";
                 selectedDateMillis[0] = -1;
+                selectedHour[0] = -1;
+                selectedMinute[0] = -1;
                 dateChipContainer.setVisibility(View.GONE);
                 actionDate.setVisibility(View.VISIBLE);
             });
 
+            datePicker.setOnTimeSelectedListener((h, m) -> {
+                selectedHour[0] = h;
+                selectedMinute[0] = m;
+            });
+
             if (selectedDateMillis[0] > 0) {
                 datePicker.setPreSelectedDate(selectedDateMillis[0]);
+            }
+            if (selectedHour[0] >= 0) {
+                datePicker.setPreSelectedTime(selectedHour[0], selectedMinute[0]);
             }
 
             datePicker.show(getSupportFragmentManager(), "date_picker");
@@ -489,8 +528,12 @@ public class MainActivity extends AppCompatActivity {
         popupWindow.setElevation(8f);
 
         popupView.findViewById(R.id.popup_item_list).setOnClickListener(v -> {
-            Toast.makeText(this, "Tạo Danh sách mới", Toast.LENGTH_SHORT).show();
+            // Đóng popup menu
             popupWindow.dismiss();
+
+            // Mở màn hình Thêm Danh Sách
+            AddListDialogFragment dialog = AddListDialogFragment.newInstance();
+            dialog.show(getSupportFragmentManager(), "AddListDialog");
         });
 
         popupView.findViewById(R.id.popup_item_filter).setOnClickListener(v -> {

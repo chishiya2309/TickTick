@@ -13,6 +13,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+import com.google.android.material.timepicker.MaterialTimePicker;
+import com.google.android.material.timepicker.TimeFormat;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -22,8 +24,16 @@ import java.util.Locale;
 
 import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.CalendarAdapter;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.OnTimeSelectedListener;
 
 public class DatePickerBottomSheet extends BottomSheetDialogFragment {
+    private int selectedHour = -1;
+    private int selectedMinute = -1;
+    private OnTimeSelectedListener timeListener;
+
+    public void setOnTimeSelectedListener(OnTimeSelectedListener listener) {
+        this.timeListener = listener;
+    }
 
     public interface OnDateSelectedListener {
         void onDateSelected(String dateTag, long dateMillis);
@@ -36,14 +46,16 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
     private OnDateSelectedListener dateListener;
     private OnDateClearedListener clearListener;
 
-    private Calendar displayCalendar;  // Tháng đang hiển thị
-    private Calendar selectedDate;      // Ngày được chọn (null = chưa chọn)
+    private Calendar displayCalendar; // Tháng đang hiển thị
+    private Calendar selectedDate; // Ngày được chọn (null = chưa chọn)
 
     private CalendarAdapter calendarAdapter;
     private TextView monthTitle;
 
     // Cho phép pre-select ngày (từ quick buttons trước đó)
     private long preSelectedDateMillis = -1;
+    private int preSelectedHour = -1;
+    private int preSelectedMinute = -1;
 
     public void setOnDateSelectedListener(OnDateSelectedListener listener) {
         this.dateListener = listener;
@@ -57,6 +69,11 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
         this.preSelectedDateMillis = millis;
     }
 
+    public void setPreSelectedTime(int hour, int minute) {
+        this.preSelectedHour = hour;
+        this.preSelectedMinute = minute;
+    }
+
     @Override
     public int getTheme() {
         return R.style.BottomSheetDialogTheme;
@@ -65,8 +82,8 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
+            @Nullable ViewGroup container,
+            @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.layout_bottom_sheet_date_picker, container, false);
     }
 
@@ -76,6 +93,8 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
 
         displayCalendar = Calendar.getInstance();
         selectedDate = null;
+        selectedHour = preSelectedHour;
+        selectedMinute = preSelectedMinute;
 
         // Nếu có pre-selected date
         if (preSelectedDateMillis > 0) {
@@ -92,6 +111,12 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
             if (selectedDate != null && dateListener != null) {
                 SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
                 String dateTag = sdf.format(selectedDate.getTime());
+
+                // Nếu có giờ, thêm vào tag
+                if (selectedHour >= 0) {
+                    dateTag += String.format(Locale.getDefault(), " %02d:%02d", selectedHour, selectedMinute);
+                }
+
                 dateListener.onDateSelected(dateTag, selectedDate.getTimeInMillis());
             }
             dismiss();
@@ -120,7 +145,7 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
 
         // ── Day-of-week headers ──
         GridView headerGrid = view.findViewById(R.id.calendar_day_headers);
-        String[] dayHeaders = {"Th 2", "Th 3", "Th 4", "Th 5", "Th 6", "Th 7", "CN"};
+        String[] dayHeaders = { "Th 2", "Th 3", "Th 4", "Th 5", "Th 6", "Th 7", "CN" };
         headerGrid.setAdapter(new ArrayAdapter<>(requireContext(),
                 R.layout.item_calendar_day_header, R.id.header_text, dayHeaders));
 
@@ -141,20 +166,50 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
         // ── Grid click → select day ──
         calendarGrid.setOnItemClickListener((parent, v, position, id) -> {
             int day = (int) calendarAdapter.getItem(position);
-            if (day == 0) return;
+            if (day == 0)
+                return;
 
             selectedDate = (Calendar) displayCalendar.clone();
             selectedDate.set(Calendar.DAY_OF_MONTH, day);
             calendarAdapter.setSelectedDay(day);
         });
 
-        // ── Options (placeholder) ──
-        view.findViewById(R.id.option_time).setOnClickListener(v ->
-                Toast.makeText(getContext(), "Chọn thời gian", Toast.LENGTH_SHORT).show());
-        view.findViewById(R.id.option_reminder).setOnClickListener(v ->
-                Toast.makeText(getContext(), "Đặt lời nhắc", Toast.LENGTH_SHORT).show());
-        view.findViewById(R.id.option_repeat).setOnClickListener(v ->
-                Toast.makeText(getContext(), "Đặt lặp lại", Toast.LENGTH_SHORT).show());
+        // ── Options ──
+        TextView textTimeValue = view.findViewById(R.id.text_time_value);
+        if (selectedHour >= 0) {
+            textTimeValue.setText(String.format(Locale.getDefault(), "%02d:%02d", selectedHour, selectedMinute));
+            textTimeValue.setTextColor(requireContext().getColor(R.color.main_accent_blue));
+        }
+        view.findViewById(R.id.option_time).setOnClickListener(v -> showTimePicker(textTimeValue));
+        TextView textReminderValue = view.findViewById(R.id.text_reminder_value);
+        view.findViewById(R.id.option_reminder).setOnClickListener(v -> {
+            ReminderDialogFragment reminderDialog = new ReminderDialogFragment();
+
+            // Truyền time mặc định (nếu đã chọn giờ)
+            if (selectedHour >= 0) {
+                reminderDialog.setDefaultTime(
+                        String.format(Locale.getDefault(), "%02d:%02d", selectedHour, selectedMinute));
+            }
+
+            // Truyền ngày task (nếu đã chọn)
+            if (selectedDate != null) {
+                reminderDialog.setTaskDateMillis(selectedDate.getTimeInMillis());
+            }
+
+            reminderDialog.setOnReminderSelectedListener((reminders, continuous) -> {
+                if (reminders.isEmpty()) {
+                    textReminderValue.setText("Không có");
+                    textReminderValue.setTextColor(requireContext().getColor(R.color.main_text_secondary));
+                } else {
+                    textReminderValue.setText(reminders.size() + " lời nhắc");
+                    textReminderValue.setTextColor(requireContext().getColor(R.color.main_accent_blue));
+                }
+            });
+
+            reminderDialog.show(getChildFragmentManager(), "reminder_dialog");
+        });
+        view.findViewById(R.id.option_repeat)
+                .setOnClickListener(v -> Toast.makeText(getContext(), "Đặt lặp lại", Toast.LENGTH_SHORT).show());
 
         // ── NÚT XÓA ──
         view.findViewById(R.id.btn_clear_date).setOnClickListener(v -> {
@@ -164,6 +219,34 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
             }
             dismiss();
         });
+    }
+
+    private void showTimePicker(TextView textTimeValue) {
+        int hour = selectedHour >= 0 ? selectedHour : Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        int minute = selectedMinute >= 0 ? selectedMinute : Calendar.getInstance().get(Calendar.MINUTE);
+
+        MaterialTimePicker timePicker = new MaterialTimePicker.Builder()
+                .setTimeFormat(TimeFormat.CLOCK_24H)
+                .setHour(hour)
+                .setMinute(minute)
+                .setTitleText("Thời gian")
+                .setInputMode(MaterialTimePicker.INPUT_MODE_KEYBOARD)
+                .build();
+
+        timePicker.addOnPositiveButtonClickListener(v -> {
+            selectedHour = timePicker.getHour();
+            selectedMinute = timePicker.getMinute();
+
+            String timeStr = String.format(Locale.getDefault(), "%02d:%02d", selectedHour, selectedMinute);
+            textTimeValue.setText(timeStr);
+            textTimeValue.setTextColor(requireContext().getColor(R.color.main_accent_blue));
+
+            if (timeListener != null) {
+                timeListener.onTimeSelected(selectedHour, selectedMinute);
+            }
+        });
+
+        timePicker.show(getChildFragmentManager(), "time_picker");
     }
 
     private void setupQuickButtons(View view) {
@@ -183,7 +266,8 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
                 Calendar cal = Calendar.getInstance();
                 int dow = cal.get(Calendar.DAY_OF_WEEK);
                 int daysUntilMonday = (Calendar.MONDAY - dow + 7) % 7;
-                if (daysUntilMonday == 0) daysUntilMonday = 7;
+                if (daysUntilMonday == 0)
+                    daysUntilMonday = 7;
                 selectQuickAndClose("Thứ Hai tới", daysUntilMonday);
             });
         }
@@ -210,9 +294,9 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
         int month = displayCalendar.get(Calendar.MONTH);
 
         // Update tiêu đề tháng
-        String[] monthNames = {"tháng 1", "tháng 2", "tháng 3", "tháng 4",
+        String[] monthNames = { "tháng 1", "tháng 2", "tháng 3", "tháng 4",
                 "tháng 5", "tháng 6", "tháng 7", "tháng 8",
-                "tháng 9", "tháng 10", "tháng 11", "tháng 12"};
+                "tháng 9", "tháng 10", "tháng 11", "tháng 12" };
         monthTitle.setText(monthNames[month]);
 
         // Tính ngày đầu tiên của tháng

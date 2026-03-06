@@ -1,4 +1,5 @@
 package hcmute.edu.vn.lequanghung_23110110.ticktick.adapter;
+
 /*
 * > **Giải thích Custom Adapter**:
 >
@@ -43,7 +44,8 @@ public class DrawerMenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
     @Override
     public int getItemViewType(int position) {
         return items.get(position).getType() == DrawerMenuItem.ItemType.SEPARATOR
-                ? VIEW_TYPE_SEPARATOR : VIEW_TYPE_ITEM;
+                ? VIEW_TYPE_SEPARATOR
+                : VIEW_TYPE_ITEM;
     }
 
     @NonNull
@@ -71,9 +73,9 @@ public class DrawerMenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         return items.size();
     }
 
-    // === ViewHolder cho menu item ===
     class MenuItemViewHolder extends RecyclerView.ViewHolder {
         ImageView icon;
+        TextView emojiIcon;
         TextView title;
         TextView badge;
         ImageView chevron;
@@ -83,6 +85,7 @@ public class DrawerMenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
             super(itemView);
             itemContainer = itemView.findViewById(R.id.drawer_item_container);
             icon = itemView.findViewById(R.id.drawer_item_icon);
+            emojiIcon = itemView.findViewById(R.id.drawer_item_emoji);
             title = itemView.findViewById(R.id.drawer_item_title);
             badge = itemView.findViewById(R.id.drawer_item_badge);
             chevron = itemView.findViewById(R.id.drawer_item_chevron);
@@ -90,11 +93,17 @@ public class DrawerMenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
         void bind(DrawerMenuItem item, int position) {
             // Icon
-            if (item.getIconResId() != 0) {
+            if (item.getEmojiIcon() != null && !item.getEmojiIcon().isEmpty()) {
+                emojiIcon.setText(item.getEmojiIcon());
+                emojiIcon.setVisibility(View.VISIBLE);
+                icon.setVisibility(View.GONE);
+            } else if (item.getIconResId() != 0) {
                 icon.setImageResource(item.getIconResId());
                 icon.setVisibility(View.VISIBLE);
+                emojiIcon.setVisibility(View.GONE);
             } else {
                 icon.setVisibility(View.GONE);
+                emojiIcon.setVisibility(View.GONE);
             }
 
             // Title

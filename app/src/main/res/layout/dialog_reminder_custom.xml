@@ -1,6 +1,136 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-             android:layout_width="match_parent"
-             android:layout_height="match_parent">
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#2D2D2D"
+    android:padding="16dp">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <!-- Title -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Lời nhắc"
+        android:textColor="#B0B0B0"
+        android:textSize="13sp"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Tabs: Trước ngày / Trước tuần -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="12dp">
+
+        <TextView
+            android:id="@+id/tab_before_day"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="Trước ngày"
+            android:textColor="#4C6FE0"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:background="@drawable/bg_tab_selected"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/tab_before_week"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="Trước tuần"
+            android:textColor="#B0B0B0"
+            android:textSize="14sp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
+    <!-- NumberPicker Row: [Label] [Hour] : [Minute] -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="160dp"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <!-- Label picker (Đúng ngày, 1 days early, ...) -->
+        <NumberPicker
+            android:id="@+id/picker_label"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2" />
+
+        <!-- Hour picker -->
+        <NumberPicker
+            android:id="@+id/picker_hour"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=":"
+            android:textColor="#E0E0E0"
+            android:textSize="18sp"
+            android:layout_gravity="center" />
+
+        <!-- Minute picker -->
+        <NumberPicker
+            android:id="@+id/picker_minute"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+    </LinearLayout>
+
+    <!-- Info text -->
+    <TextView
+        android:id="@+id/text_reminder_info"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Nhắc nhở lúc 09:00 trong 12 thg 3, 2026"
+        android:textColor="#B0B0B0"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:layout_marginTop="8dp" />
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="12dp">
+
+        <TextView
+            android:id="@+id/btn_custom_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Hủy bỏ"
+            android:textColor="#B0B0B0"
+            android:textSize="14sp"
+            android:padding="8dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/btn_custom_done"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ĐÃ XONG"
+            android:textColor="#4C6FE0"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:padding="8dp"
+            android:layout_marginStart="24dp"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
+</LinearLayout>
