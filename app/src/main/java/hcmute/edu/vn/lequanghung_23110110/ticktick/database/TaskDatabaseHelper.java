@@ -11,12 +11,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 
 public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "ticktick.db";
-    private static final int DB_VERSION = 2; // Nâng cấp để thêm cột order_index
+    private static final int DB_VERSION = 3; // Nâng cấp để thêm cột is_pinned
 
     // === Table: lists ===
     private static final String TABLE_LISTS = "lists";
@@ -24,6 +25,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     private static final String COL_LIST_NAME = "name";
     private static final String COL_LIST_ICON = "icon_name";
     private static final String COL_LIST_ORDER = "order_index";
+    private static final String COL_LIST_IS_PINNED = "is_pinned";
 
     // === Table: tasks ===
     private static final String TABLE_TASKS = "tasks";
@@ -54,7 +56,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 + COL_LIST_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + COL_LIST_NAME + " TEXT NOT NULL, "
                 + COL_LIST_ICON + " TEXT, "
-                + COL_LIST_ORDER + " INTEGER DEFAULT 0"
+                + COL_LIST_ORDER + " INTEGER DEFAULT 0, "
+                + COL_LIST_IS_PINNED + " INTEGER DEFAULT 0"
                 + ")");
 
         db.execSQL("CREATE TABLE " + TABLE_TASKS + " ("
@@ -80,6 +83,9 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         if (oldVersion < 2) {
             db.execSQL("ALTER TABLE " + TABLE_LISTS + " ADD COLUMN " + COL_LIST_ORDER + " INTEGER DEFAULT 0");
+        }
+        if (oldVersion < 3) {
+            db.execSQL("ALTER TABLE " + TABLE_LISTS + " ADD COLUMN " + COL_LIST_IS_PINNED + " INTEGER DEFAULT 0");
         }
     }
 
@@ -283,6 +289,50 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         }
         cursor.close();
         return name;
+    }
+
+    /** Đổi trạng thái ghim của danh sách */
+    public void togglePinList(int listId, boolean isPinned) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COL_LIST_IS_PINNED, isPinned ? 1 : 0);
+        db.update(TABLE_LISTS, cv, COL_LIST_ID + " = ?", new String[] { String.valueOf(listId) });
+    }
+
+    /** Kiểm tra xem sách có đang được ghim hay không */
+    public boolean isListPinned(int listId) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(TABLE_LISTS, new String[] { COL_LIST_IS_PINNED },
+                COL_LIST_ID + " = ?", new String[] { String.valueOf(listId) },
+                null, null, null);
+        boolean isPinned = false;
+        if (cursor.moveToFirst()) {
+            isPinned = cursor.getInt(0) == 1;
+        }
+        cursor.close();
+        return isPinned;
+    }
+
+    /** Lấy tất cả danh sách đang được đính ghim */
+    public List<DrawerMenuItem> getPinnedLists() {
+        List<DrawerMenuItem> pinnedLists = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(TABLE_LISTS, new String[] { COL_LIST_NAME, COL_LIST_ICON },
+                COL_LIST_IS_PINNED + " = 1", null, null, null, COL_LIST_ORDER + " ASC, " + COL_LIST_ID + " ASC");
+
+        while (cursor.moveToNext()) {
+            String listName = cursor.getString(0);
+            String iconName = cursor.getString(1);
+
+            if (iconName != null && iconName.startsWith("ic_")) {
+                int resId = 0; // MainActivity sẽ resolve logic này, tạm bỏ nếu chưa cần
+                pinnedLists.add(new DrawerMenuItem(listName, resId, DrawerMenuItem.ItemType.LIST));
+            } else {
+                pinnedLists.add(new DrawerMenuItem(listName, iconName, DrawerMenuItem.ItemType.LIST));
+            }
+        }
+        cursor.close();
+        return pinnedLists;
     }
 
     public int getListIconResId(Context context, int listId) {

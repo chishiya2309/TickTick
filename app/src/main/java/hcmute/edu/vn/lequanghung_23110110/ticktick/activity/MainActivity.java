@@ -43,6 +43,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.AddListDialogFragment;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.DatePickerBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.PinnedListAdapter;
 import android.widget.ImageView;
 import android.text.TextUtils;
 import android.widget.EditText;
@@ -66,6 +67,9 @@ public class MainActivity extends AppCompatActivity {
     // Drawer
     private DrawerMenuAdapter drawerAdapter;
     private List<DrawerMenuItem> drawerItems;
+    private RecyclerView pinnedRecyclerView;
+    private PinnedListAdapter pinnedAdapter;
+    private List<DrawerMenuItem> pinnedItems;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -219,6 +223,23 @@ public class MainActivity extends AppCompatActivity {
 
         RecyclerView drawerRecyclerView = findViewById(R.id.drawer_recycler_view);
         drawerRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+
+        pinnedRecyclerView = findViewById(R.id.drawer_pinned_recycler_view);
+        pinnedRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+
+        pinnedItems = dbHelper.getPinnedLists();
+        pinnedAdapter = new PinnedListAdapter(pinnedItems, item -> {
+            int listId = dbHelper.getListIdByName(item.getTitle());
+            if (listId != -1) {
+                // Determine iconResId vs emoji
+                // For simplicity, re-fetch or use item properties directly
+                int resId = dbHelper.getListIconResId(this, listId);
+                loadTasksForList(listId, resId, item.getEmojiIcon());
+            }
+            drawerLayout.closeDrawer(GravityCompat.START);
+        });
+        pinnedRecyclerView.setAdapter(pinnedAdapter);
+        updatePinnedVisibility();
 
         drawerItems = buildDrawerMenuItems();
         drawerAdapter = new DrawerMenuAdapter(drawerItems);
@@ -688,15 +709,35 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        int listId = dbHelper.getListIdByName(item.getTitle());
+
+        // Cập nhật text hiển thị dựa theo trạng thái Pin hiện tại
+        TextView pinActionText = popupView.findViewById(R.id.popup_action_pin).findViewById(R.id.text_pin_action);
+        if (pinActionText != null && listId != -1) {
+            boolean isPinned = dbHelper.isListPinned(listId);
+            pinActionText.setText(isPinned ? "Bỏ ghim" : "Đính ghim");
+        }
+
         popupView.findViewById(R.id.popup_action_pin).setOnClickListener(v -> {
             popupWindow.dismiss();
-            Toast.makeText(this, "Đính ghim: " + item.getTitle(), Toast.LENGTH_SHORT).show();
+            if (listId != -1) {
+                boolean isCurrentlyPinned = dbHelper.isListPinned(listId);
+                dbHelper.togglePinList(listId, !isCurrentlyPinned);
+
+                // Cập nhật giao diện
+                pinnedItems.clear();
+                pinnedItems.addAll(dbHelper.getPinnedLists());
+                pinnedAdapter.notifyDataSetChanged();
+                updatePinnedVisibility();
+
+                Toast.makeText(this, (!isCurrentlyPinned ? "Đã đính ghim: " : "Đã bỏ ghim: ") + item.getTitle(),
+                        Toast.LENGTH_SHORT).show();
+            }
         });
 
         popupView.findViewById(R.id.popup_action_delete).setOnClickListener(v -> {
             popupWindow.dismiss();
 
-            int listId = dbHelper.getListIdByName(item.getTitle());
             if (listId != -1) {
                 String title = "Bạn có muốn xóa danh sách \"";
                 if (item.getEmojiIcon() != null && !item.getEmojiIcon().isEmpty()) {
@@ -717,5 +758,13 @@ public class MainActivity extends AppCompatActivity {
         });
 
         popupWindow.showAsDropDown(anchorView, dpToPx(32), -dpToPx(24));
+    }
+
+    private void updatePinnedVisibility() {
+        if (pinnedItems != null && !pinnedItems.isEmpty()) {
+            pinnedRecyclerView.setVisibility(View.VISIBLE);
+        } else {
+            pinnedRecyclerView.setVisibility(View.GONE);
+        }
     }
 }

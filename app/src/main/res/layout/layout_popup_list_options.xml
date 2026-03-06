@@ -55,6 +55,7 @@
             android:contentDescription="Đính ghim" />
 
         <TextView
+            android:id="@+id/text_pin_action"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"

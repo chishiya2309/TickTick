@@ -71,6 +71,17 @@
 
     </LinearLayout>
 
+    <!-- ===== PINNED LISTS (Horizontal RecyclerView) ===== -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/drawer_pinned_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="16dp"
+        android:paddingEnd="4dp"
+        android:clipToPadding="false"
+        android:visibility="gone"
+        android:overScrollMode="never" />
+
     <!-- ===== MENU ITEMS (RecyclerView) ===== -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/drawer_recycler_view"
