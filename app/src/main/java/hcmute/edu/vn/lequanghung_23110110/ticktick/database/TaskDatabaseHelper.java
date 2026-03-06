@@ -191,6 +191,15 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         return db.insert(TABLE_LISTS, null, cv);
     }
 
+    /** Cập nhật danh sách (Custom List) */
+    public void updateList(int listId, String newName, String newIconName) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COL_LIST_NAME, newName);
+        cv.put(COL_LIST_ICON, newIconName);
+        db.update(TABLE_LISTS, cv, COL_LIST_ID + " = ?", new String[] { String.valueOf(listId) });
+    }
+
     /** Cập nhật trạng thái completed */
     public void updateTaskCompleted(int taskId, boolean completed) {
         SQLiteDatabase db = getWritableDatabase();

@@ -46,12 +46,20 @@ public class DrawerMenuItem {
         return title;
     }
 
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
     public int getIconResId() {
         return iconResId;
     }
 
     public String getEmojiIcon() {
         return emojiIcon;
+    }
+
+    public void setEmojiIcon(String emojiIcon) {
+        this.emojiIcon = emojiIcon;
     }
 
     public ItemType getType() {

@@ -222,19 +222,29 @@ public class MainActivity extends AppCompatActivity {
         drawerAdapter = new DrawerMenuAdapter(drawerItems);
         drawerRecyclerView.setAdapter(drawerAdapter);
 
-        // Click → load tasks cho danh sách đó
-        drawerAdapter.setOnItemClickListener((item, position) -> {
-            if (item.getType() == DrawerMenuItem.ItemType.SEPARATOR)
-                return;
+        // Click và Long Click → load tasks hoặc show popup
+        drawerAdapter.setOnItemClickListener(new DrawerMenuAdapter.OnItemClickListener() {
+            @Override
+            public void onItemClick(DrawerMenuItem item, int position) {
+                if (item.getType() == DrawerMenuItem.ItemType.SEPARATOR)
+                    return;
 
-            drawerAdapter.setSelectedPosition(position);
+                drawerAdapter.setSelectedPosition(position);
 
-            int listId = dbHelper.getListIdByName(item.getTitle());
-            if (listId != -1) {
-                loadTasksForList(listId, item.getIconResId(), item.getEmojiIcon()); // Truyền thêm emoji
+                int listId = dbHelper.getListIdByName(item.getTitle());
+                if (listId != -1) {
+                    loadTasksForList(listId, item.getIconResId(), item.getEmojiIcon()); // Truyền thêm emoji
+                }
+
+                drawerLayout.closeDrawer(GravityCompat.START);
             }
 
-            drawerLayout.closeDrawer(GravityCompat.START);
+            @Override
+            public void onItemLongClick(DrawerMenuItem item, int position, View anchorView) {
+                if (item.getType() == DrawerMenuItem.ItemType.LIST) {
+                    showListContextMenu(anchorView, item, position);
+                }
+            }
         });
 
         // Header buttons
@@ -296,6 +306,20 @@ public class MainActivity extends AppCompatActivity {
         // Insert item right before the last separator
         drawerItems.add(drawerItems.size() - 1, newItem);
         drawerAdapter.notifyItemInserted(drawerItems.size() - 2);
+    }
+
+    public void updateListInDrawer(int listId, String newName, String newEmojiIcon, int position) {
+        // Lưu vào DB
+        dbHelper.updateList(listId, newName, newEmojiIcon);
+
+        DrawerMenuItem item = drawerItems.get(position);
+        item.setTitle(newName);
+        item.setEmojiIcon(newEmojiIcon);
+        drawerAdapter.notifyItemChanged(position);
+
+        if (item.isSelected()) {
+            updateToolbarForList(newName, item.getIconResId(), newEmojiIcon);
+        }
     }
 
     /**
@@ -551,5 +575,41 @@ public class MainActivity extends AppCompatActivity {
         int yOffset = -(anchorView.getHeight() + popupHeight + dpToPx(8));
 
         popupWindow.showAsDropDown(anchorView, dpToPx(16), yOffset);
+    }
+
+    private void showListContextMenu(View anchorView, DrawerMenuItem item, int position) {
+        View popupView = getLayoutInflater().inflate(R.layout.layout_popup_list_options, null);
+
+        PopupWindow popupWindow = new PopupWindow(popupView,
+                dpToPx(180),
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                true);
+
+        popupWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        popupWindow.setElevation(8f);
+
+        // Bắt sự kiện click các nút chức năng
+        popupView.findViewById(R.id.popup_action_edit).setOnClickListener(v -> {
+            popupWindow.dismiss();
+            int listId = dbHelper.getListIdByName(item.getTitle());
+            if (listId != -1) {
+                hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.AddListDialogFragment dialog = hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.AddListDialogFragment
+                        .newInstanceForEdit(listId, item.getTitle(), item.getEmojiIcon(), position);
+                dialog.show(getSupportFragmentManager(), "EditListDialog");
+            }
+        });
+
+        popupView.findViewById(R.id.popup_action_pin).setOnClickListener(v -> {
+            popupWindow.dismiss();
+            Toast.makeText(this, "Đính ghim: " + item.getTitle(), Toast.LENGTH_SHORT).show();
+        });
+
+        popupView.findViewById(R.id.popup_action_delete).setOnClickListener(v -> {
+            popupWindow.dismiss();
+            Toast.makeText(this, "Xóa: " + item.getTitle(), Toast.LENGTH_SHORT).show();
+            // TODO: Xóa danh sách và cập nhật ListView
+        });
+
+        popupWindow.showAsDropDown(anchorView, dpToPx(32), -dpToPx(24));
     }
 }

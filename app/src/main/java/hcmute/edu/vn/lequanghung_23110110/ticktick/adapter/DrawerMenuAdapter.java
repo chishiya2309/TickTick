@@ -31,6 +31,8 @@ public class DrawerMenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
     public interface OnItemClickListener {
         void onItemClick(DrawerMenuItem item, int position);
+
+        void onItemLongClick(DrawerMenuItem item, int position, View anchorView);
     }
 
     public DrawerMenuAdapter(List<DrawerMenuItem> items) {
@@ -134,6 +136,15 @@ public class DrawerMenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
                 if (listener != null) {
                     listener.onItemClick(item, position);
                 }
+            });
+
+            // Long Click
+            itemContainer.setOnLongClickListener(v -> {
+                if (listener != null && item.getType() == DrawerMenuItem.ItemType.LIST) {
+                    listener.onItemLongClick(item, position, v);
+                    return true;
+                }
+                return false;
             });
         }
     }
