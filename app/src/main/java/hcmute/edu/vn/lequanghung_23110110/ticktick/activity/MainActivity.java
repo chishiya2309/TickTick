@@ -21,6 +21,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.ItemTouchHelper;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -247,6 +248,75 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Kéo thả thay đổi thứ tự (Drag & Drop)
+        ItemTouchHelper.SimpleCallback simpleCallback = new ItemTouchHelper.SimpleCallback(
+                ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+
+            @Override
+            public boolean isLongPressDragEnabled() {
+                return true;
+            }
+
+            @Override
+            public int getMovementFlags(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
+                // Chỉ cho phép kéo các item có loại là LIST (ngăn chặn List hệ thống)
+                int position = viewHolder.getAdapterPosition();
+                if (position != RecyclerView.NO_POSITION) {
+                    DrawerMenuItem item = drawerItems.get(position);
+                    // Giả định hệ thống item & separator ở đầu có index từ 0 -> (số lượng item cố
+                    // định)
+                    // Ở đây, "Hôm nay", "Hộp thư đến" và 1 phân cách = 3 items đầu.
+                    if (item.getType() != DrawerMenuItem.ItemType.LIST || position < 3) {
+                        return makeMovementFlags(0, 0); // Vô hiệu hóa kéo thả
+                    }
+                }
+                return super.getMovementFlags(recyclerView, viewHolder);
+            }
+
+            @Override
+            public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder,
+                    RecyclerView.ViewHolder target) {
+                int fromPosition = viewHolder.getAdapterPosition();
+                int targetPosition = target.getAdapterPosition();
+
+                // Kiểm tra xem vị trí đích có thuộc về Custom List không
+                if (targetPosition < 3 || drawerItems.get(targetPosition).getType() != DrawerMenuItem.ItemType.LIST) {
+                    return false; // Không cho phép hoán đổi vào đây
+                }
+
+                // Hoán đổi vị trí trong list
+                DrawerMenuItem movedItem = drawerItems.remove(fromPosition);
+                drawerItems.add(targetPosition, movedItem);
+
+                // Thông báo adapter vẽ lại UI
+                drawerAdapter.notifyItemMoved(fromPosition, targetPosition);
+                return true;
+            }
+
+            @Override
+            public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
+                // Không hỗ trợ Swipe để xóa ở Drawer
+            }
+
+            @Override
+            public void clearView(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
+                super.clearView(recyclerView, viewHolder);
+
+                // Cập nhật Database khi ngón tay thẻ vuốt ra
+                List<String> orderedListNames = new ArrayList<>();
+                for (DrawerMenuItem item : drawerItems) {
+                    // Chúng ta chỉ lấy ra các danh sách tùy chỉnh
+                    if (item.getType() == DrawerMenuItem.ItemType.LIST && drawerItems.indexOf(item) >= 3) {
+                        orderedListNames.add(item.getTitle());
+                    }
+                }
+                dbHelper.updateListOrder(orderedListNames);
+            }
+        };
+
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(simpleCallback);
+        itemTouchHelper.attachToRecyclerView(drawerRecyclerView);
+
         // Header buttons
         findViewById(R.id.drawer_btn_search)
                 .setOnClickListener(v -> Toast.makeText(this, "Tìm kiếm", Toast.LENGTH_SHORT).show());
@@ -303,9 +373,9 @@ public class MainActivity extends AppCompatActivity {
         dbHelper.insertList(name, emojiIcon);
 
         DrawerMenuItem newItem = new DrawerMenuItem(name, emojiIcon, DrawerMenuItem.ItemType.LIST);
-        // Insert item right before the last separator
-        drawerItems.add(drawerItems.size() - 1, newItem);
-        drawerAdapter.notifyItemInserted(drawerItems.size() - 2);
+        // Chèn item mới vào đầu phần custom list (sau separator ở vị trí 2)
+        drawerItems.add(3, newItem);
+        drawerAdapter.notifyItemInserted(3);
     }
 
     public void updateListInDrawer(int listId, String newName, String newEmojiIcon, int position) {

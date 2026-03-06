@@ -16,13 +16,14 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "ticktick.db";
-    private static final int DB_VERSION = 1;
+    private static final int DB_VERSION = 2; // Nâng cấp để thêm cột order_index
 
     // === Table: lists ===
     private static final String TABLE_LISTS = "lists";
     private static final String COL_LIST_ID = "_id";
     private static final String COL_LIST_NAME = "name";
     private static final String COL_LIST_ICON = "icon_name";
+    private static final String COL_LIST_ORDER = "order_index";
 
     // === Table: tasks ===
     private static final String TABLE_TASKS = "tasks";
@@ -52,7 +53,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE " + TABLE_LISTS + " ("
                 + COL_LIST_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + COL_LIST_NAME + " TEXT NOT NULL, "
-                + COL_LIST_ICON + " TEXT"
+                + COL_LIST_ICON + " TEXT, "
+                + COL_LIST_ORDER + " INTEGER DEFAULT 0"
                 + ")");
 
         db.execSQL("CREATE TABLE " + TABLE_TASKS + " ("
@@ -76,9 +78,9 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_TASKS);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_LISTS);
-        onCreate(db);
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE " + TABLE_LISTS + " ADD COLUMN " + COL_LIST_ORDER + " INTEGER DEFAULT 0");
+        }
     }
 
     private void seedDefaultLists(SQLiteDatabase db) {
@@ -91,6 +93,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
             ContentValues cv = new ContentValues();
             cv.put(COL_LIST_NAME, lists[i]);
             cv.put(COL_LIST_ICON, icons[i]);
+            cv.put(COL_LIST_ORDER, i);
             db.insert(TABLE_LISTS, null, cv);
         }
 
@@ -182,12 +185,19 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         return db.insert(TABLE_TASKS, null, cv);
     }
 
-    /** Thêm danh sách mới (Custom List) */
+    /** Thêm danh sách mới (Custom List) - Thêm vào trên cùng */
     public long insertList(String name, String iconName) {
         SQLiteDatabase db = getWritableDatabase();
+
+        // Đẩy toàn bộ các Custom List (ngoài Hôm nay & Hộp thư đến) xuống 1 bậc
+        db.execSQL("UPDATE " + TABLE_LISTS +
+                " SET " + COL_LIST_ORDER + " = " + COL_LIST_ORDER + " + 1 " +
+                " WHERE " + COL_LIST_ID + " > 2");
+
         ContentValues cv = new ContentValues();
         cv.put(COL_LIST_NAME, name);
         cv.put(COL_LIST_ICON, iconName);
+        cv.put(COL_LIST_ORDER, 0); // Đặt Item này lên đầu danh sách Custom
         return db.insert(TABLE_LISTS, null, cv);
     }
 
@@ -198,6 +208,22 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         cv.put(COL_LIST_NAME, newName);
         cv.put(COL_LIST_ICON, newIconName);
         db.update(TABLE_LISTS, cv, COL_LIST_ID + " = ?", new String[] { String.valueOf(listId) });
+    }
+
+    /** Cập nhật lại số thứ tự danh sách do người dùng kéo thả dựa theo tên */
+    public void updateListOrder(List<String> orderedNames) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            for (int i = 0; i < orderedNames.size(); i++) {
+                ContentValues cv = new ContentValues();
+                cv.put(COL_LIST_ORDER, i);
+                db.update(TABLE_LISTS, cv, COL_LIST_NAME + " = ?", new String[] { orderedNames.get(i) });
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
     }
 
     /** Cập nhật trạng thái completed */
@@ -269,7 +295,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         // Skip list_id 1 và 2 ("Hôm nay", "Hộp thư đến") vì đó thuộc Navigation items
         // mặc định
         Cursor cursor = db.query(TABLE_LISTS, new String[] { COL_LIST_NAME, COL_LIST_ICON },
-                COL_LIST_ID + " > 2", null, null, null, COL_LIST_ID + " ASC");
+                COL_LIST_ID + " > 2", null, null, null, COL_LIST_ORDER + " ASC, " + COL_LIST_ID + " ASC");
 
         while (cursor.moveToNext()) {
             lists.put(cursor.getString(0), cursor.getString(1));
