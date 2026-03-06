@@ -24,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.ItemTouchHelper;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import android.graphics.Color;
@@ -392,6 +393,24 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public void deleteListFromDrawer(int listId, int position) {
+        // Xóa khỏi DB (Bao gồm List và toàn bộ Tasks trong đó)
+        dbHelper.deleteList(listId);
+
+        // Xóa khỏi Drawer UI
+        DrawerMenuItem deletedItem = drawerItems.remove(position);
+        drawerAdapter.notifyItemRemoved(position);
+
+        // Nếu danh sách bị xóa đang được chọn, chuyển về danh sách "Hôm nay" (listId
+        // mặc định = 1)
+        if (deletedItem.isSelected()) {
+            // "Hôm nay" thường ở vị trí index = 0 trong drawerItems
+            DrawerMenuItem todayItem = drawerItems.get(0);
+            drawerAdapter.setSelectedPosition(0);
+            loadTasksForList(1, todayItem.getIconResId(), todayItem.getEmojiIcon());
+        }
+    }
+
     /**
      * Cập nhật badge count cho mỗi item trong Drawer.
      * Query 1 lần duy nhất: getAllListTaskCounts() → Map<listId, count>
@@ -676,8 +695,25 @@ public class MainActivity extends AppCompatActivity {
 
         popupView.findViewById(R.id.popup_action_delete).setOnClickListener(v -> {
             popupWindow.dismiss();
-            Toast.makeText(this, "Xóa: " + item.getTitle(), Toast.LENGTH_SHORT).show();
-            // TODO: Xóa danh sách và cập nhật ListView
+
+            int listId = dbHelper.getListIdByName(item.getTitle());
+            if (listId != -1) {
+                String title = "Bạn có muốn xóa danh sách \"";
+                if (item.getEmojiIcon() != null && !item.getEmojiIcon().isEmpty()) {
+                    title += item.getEmojiIcon() + " ";
+                }
+                title += item.getTitle() + "\" không?";
+
+                new MaterialAlertDialogBuilder(this)
+                        .setTitle(title)
+                        .setMessage("Tất cả các nhiệm vụ trong danh sách sẽ bị xóa.")
+                        .setNegativeButton("Hủy bỏ", (dialog, which) -> dialog.dismiss())
+                        .setPositiveButton("Xóa", (dialog, which) -> {
+                            deleteListFromDrawer(listId, position);
+                            Toast.makeText(this, "Đã xóa danh sách", Toast.LENGTH_SHORT).show();
+                        })
+                        .show();
+            }
         });
 
         popupWindow.showAsDropDown(anchorView, dpToPx(32), -dpToPx(24));

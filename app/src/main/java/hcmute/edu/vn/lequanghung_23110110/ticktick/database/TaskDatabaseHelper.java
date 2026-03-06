@@ -242,6 +242,21 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 new String[] { String.valueOf(taskId) });
     }
 
+    /** Xóa danh sách và toàn bộ Tasks nằm trong danh sách đó */
+    public void deleteList(int listId) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            // Xóa tất cả task thuộc về list này
+            db.delete(TABLE_TASKS, COL_TASK_LIST_ID + " = ?", new String[] { String.valueOf(listId) });
+            // Xóa list
+            db.delete(TABLE_LISTS, COL_LIST_ID + " = ?", new String[] { String.valueOf(listId) });
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
     /** Lấy list_id theo tên danh sách */
     public int getListIdByName(String name) {
         SQLiteDatabase db = getReadableDatabase();
