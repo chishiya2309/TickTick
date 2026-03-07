@@ -174,7 +174,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         // (Hoặc date_tag = 'Hôm nay' phòng trường hợp task cũ)
         String selection = "((" + COL_TASK_DUE_DATE + " > 0 AND " + COL_TASK_DUE_DATE + " < ?) OR " +
                 "(" + COL_TASK_DUE_DATE + " >= ? AND " + COL_TASK_DUE_DATE + " <= ?) OR " +
-                "(" + COL_TASK_DATE_TAG + " = 'Hôm nay')) AND " + COL_TASK_COMPLETED + " = 0";
+                "(" + COL_TASK_DATE_TAG + " = 'Hôm nay'))";
 
         String[] selectionArgs = new String[] {
                 String.valueOf(startOfTodayMillis),
@@ -209,7 +209,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         // due_date_millis <= endOfTomorrowMillis AND chưa hoàn thành
         // (Hoặc date_tag = 'Ngày mai' phòng trường hợp task cũ)
         String selection = "((" + COL_TASK_DUE_DATE + " >= ? AND " + COL_TASK_DUE_DATE + " <= ?) OR " +
-                "(" + COL_TASK_DATE_TAG + " = 'Ngày mai')) AND " + COL_TASK_COMPLETED + " = 0";
+                "(" + COL_TASK_DATE_TAG + " = 'Ngày mai'))";
 
         String[] selectionArgs = new String[] {
                 String.valueOf(startOfTomorrowMillis),
@@ -241,7 +241,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
         // Chỉ lấy trong 7 ngày tới
         String selection = "((" + COL_TASK_DUE_DATE + " >= ? AND " + COL_TASK_DUE_DATE + " <= ?) OR " +
-                "(" + COL_TASK_DATE_TAG + " = '7 ngày tới')) AND " + COL_TASK_COMPLETED + " = 0";
+                "(" + COL_TASK_DATE_TAG + " = '7 ngày tới'))";
 
         String[] selectionArgs = new String[] {
                 String.valueOf(startOfNext7DaysMillis),
@@ -281,8 +281,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         // 3. Các task cũ chưa có millis nhưng có date_tag hợp lệ
         String selection = "((" + COL_TASK_DUE_DATE + " > 0 AND " + COL_TASK_DUE_DATE + " < ?) OR " +
                 "(" + COL_TASK_DUE_DATE + " >= ? AND " + COL_TASK_DUE_DATE + " <= ?) OR " +
-                "(" + COL_TASK_DATE_TAG + " IN ('Hôm nay', 'Ngày mai', '7 ngày tới', 'Hôm qua'))) AND "
-                + COL_TASK_COMPLETED + " = 0";
+                "(" + COL_TASK_DATE_TAG + " IN ('Hôm nay', 'Ngày mai', '7 ngày tới', 'Hôm qua')))";
 
         String[] selectionArgs = new String[] {
                 String.valueOf(startOfTodayMillis),

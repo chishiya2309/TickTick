@@ -195,12 +195,15 @@ public class MainActivity extends AppCompatActivity {
 
             List<TaskModel> allTasks = dbHelper.getTodayAndOverdueTasks(startOfToday, endOfToday);
 
-            // Chia hai nhóm
+            // Chia ba nhóm
             List<TaskModel> overdueTasks = new ArrayList<>();
             List<TaskModel> todayTasks = new ArrayList<>();
+            List<TaskModel> completedTasks = new ArrayList<>();
 
             for (TaskModel t : allTasks) {
-                if (t.getDueDateMillis() > 0 && t.getDueDateMillis() < startOfToday) {
+                if (t.isCompleted()) {
+                    completedTasks.add(t);
+                } else if (t.getDueDateMillis() > 0 && t.getDueDateMillis() < startOfToday) {
                     overdueTasks.add(t);
                 } else {
                     todayTasks.add(t);
@@ -231,6 +234,20 @@ public class MainActivity extends AppCompatActivity {
                         taskList.addAll(todayTasks);
                 }
             }
+
+            // Xử lý nhóm Đã hoàn thành
+            if (!completedTasks.isEmpty()) {
+                boolean isExpanded = groupStates.getOrDefault("COMPLETED", false);
+                taskList.add(
+                        new TaskHeader("ĐÃ HOÀN THÀNH", completedTasks.size(), R.color.main_text_secondary, isExpanded,
+                                () -> {
+                                    groupStates.put("COMPLETED", !isExpanded);
+                                    loadTasksForList(listId, iconResId, emojiIcon);
+                                }));
+                if (isExpanded) {
+                    taskList.addAll(completedTasks);
+                }
+            }
         } else if (listId == 2) { // 2 là ID của "Ngày mai"
             long now = System.currentTimeMillis();
             Calendar cal = Calendar.getInstance();
@@ -245,7 +262,18 @@ public class MainActivity extends AppCompatActivity {
             cal.add(Calendar.DAY_OF_MONTH, 1);
             long endOfTomorrow = cal.getTimeInMillis() - 1;
 
-            List<TaskModel> tomorrowTasks = dbHelper.getTomorrowTasks(startOfTomorrow, endOfTomorrow);
+            List<TaskModel> allTomorrowTasks = dbHelper.getTomorrowTasks(startOfTomorrow, endOfTomorrow);
+
+            List<TaskModel> tomorrowTasks = new ArrayList<>();
+            List<TaskModel> completedTasks = new ArrayList<>();
+
+            for (TaskModel t : allTomorrowTasks) {
+                if (t.isCompleted()) {
+                    completedTasks.add(t);
+                } else {
+                    tomorrowTasks.add(t);
+                }
+            }
 
             if (!tomorrowTasks.isEmpty()) {
                 taskList.add(new TaskHeader("NGÀY MAI", tomorrowTasks.size(), R.color.main_text_secondary, showTomorrow,
@@ -255,6 +283,20 @@ public class MainActivity extends AppCompatActivity {
                         }));
                 if (showTomorrow) {
                     taskList.addAll(tomorrowTasks);
+                }
+            }
+
+            // Xử lý nhóm Đã hoàn thành
+            if (!completedTasks.isEmpty()) {
+                boolean isExpanded = groupStates.getOrDefault("COMPLETED", false);
+                taskList.add(
+                        new TaskHeader("ĐÃ HOÀN THÀNH", completedTasks.size(), R.color.main_text_secondary, isExpanded,
+                                () -> {
+                                    groupStates.put("COMPLETED", !isExpanded);
+                                    loadTasksForList(listId, iconResId, emojiIcon);
+                                }));
+                if (isExpanded) {
+                    taskList.addAll(completedTasks);
                 }
             }
         } else if (listId == 3) { // 3 là ID của "7 ngày tới"
@@ -312,8 +354,11 @@ public class MainActivity extends AppCompatActivity {
             }
 
             // Phân loại task vào các nhóm
+            List<TaskModel> completedTasks = new ArrayList<>();
             for (TaskModel t : allTasks) {
-                if (t.getDueDateMillis() > 0 && t.getDueDateMillis() < startOfToday) {
+                if (t.isCompleted()) {
+                    completedTasks.add(t);
+                } else if (t.getDueDateMillis() > 0 && t.getDueDateMillis() < startOfToday) {
                     overdueTasks.add(t);
                 } else if (t.getDueDateMillis() >= startOfToday && t.getDueDateMillis() <= endOfNext7Days) {
                     // Chia theo từng ngày
@@ -359,10 +404,49 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             }
+
+            // 3. Đã hoàn thành
+            if (!completedTasks.isEmpty()) {
+                boolean isExpanded = groupStates.getOrDefault("COMPLETED", false);
+                taskList.add(
+                        new TaskHeader("ĐÃ HOÀN THÀNH", completedTasks.size(), R.color.main_text_secondary, isExpanded,
+                                () -> {
+                                    groupStates.put("COMPLETED", !isExpanded);
+                                    loadTasksForList(listId, iconResId, emojiIcon);
+                                }));
+                if (isExpanded) {
+                    taskList.addAll(completedTasks);
+                }
+            }
         } else {
             // Danh sách bình thường
-            List<TaskModel> tasks = dbHelper.getTasksByListId(listId);
-            taskList.addAll(tasks);
+            List<TaskModel> allTasks = dbHelper.getTasksByListId(listId);
+
+            List<TaskModel> uncompletedTasks = new ArrayList<>();
+            List<TaskModel> completedTasks = new ArrayList<>();
+
+            for (TaskModel t : allTasks) {
+                if (t.isCompleted()) {
+                    completedTasks.add(t);
+                } else {
+                    uncompletedTasks.add(t);
+                }
+            }
+
+            taskList.addAll(uncompletedTasks);
+
+            if (!completedTasks.isEmpty()) {
+                boolean isExpanded = groupStates.getOrDefault("COMPLETED", false);
+                taskList.add(
+                        new TaskHeader("ĐÃ HOÀN THÀNH", completedTasks.size(), R.color.main_text_secondary, isExpanded,
+                                () -> {
+                                    groupStates.put("COMPLETED", !isExpanded);
+                                    loadTasksForList(listId, iconResId, emojiIcon);
+                                }));
+                if (isExpanded) {
+                    taskList.addAll(completedTasks);
+                }
+            }
         }
 
         taskAdapter.notifyDataSetChanged();
@@ -671,12 +755,21 @@ public class MainActivity extends AppCompatActivity {
 
         taskList = new ArrayList<>();
         taskAdapter = new TaskAdapter(taskList);
-        taskAdapter.setOnTaskClickListener(task -> {
-            TaskDetailBottomSheet bottomSheet = new TaskDetailBottomSheet(task);
-            bottomSheet.setOnTaskUpdatedListener(() -> {
-                loadTasksForList(currentListId); // Refresh after toggle completion or title edit
-            });
-            bottomSheet.show(getSupportFragmentManager(), "TaskDetailBottomSheet");
+        taskAdapter.setOnTaskClickListener(new TaskAdapter.OnTaskClickListener() {
+            @Override
+            public void onTaskClick(TaskModel task) {
+                TaskDetailBottomSheet bottomSheet = new TaskDetailBottomSheet(task);
+                bottomSheet.setOnTaskUpdatedListener(() -> {
+                    loadTasksForList(currentListId); // Refresh after toggle completion or title edit
+                });
+                bottomSheet.show(getSupportFragmentManager(), "TaskDetailBottomSheet");
+            }
+
+            @Override
+            public void onTaskCheckedChanged(TaskModel task, boolean isChecked) {
+                dbHelper.updateTaskCompleted(task.getId(), isChecked);
+                loadTasksForList(currentListId); // UI sync
+            }
         });
         taskRecyclerView.setAdapter(taskAdapter);
     }

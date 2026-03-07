@@ -26,6 +26,8 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     public interface OnTaskClickListener {
         void onTaskClick(TaskModel task);
+
+        void onTaskCheckedChanged(TaskModel task, boolean isChecked);
     }
 
     public TaskAdapter(List<TaskListItem> items) {
@@ -62,7 +64,7 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             ((HeaderViewHolder) holder).bind(header);
         } else if (holder instanceof TaskViewHolder) {
             TaskModel task = (TaskModel) items.get(position);
-            ((TaskViewHolder) holder).bind(task);
+            ((TaskViewHolder) holder).bind(task, listener);
             holder.itemView.setOnClickListener(v -> {
                 if (listener != null) {
                     listener.onTaskClick(task);
@@ -123,7 +125,7 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             dateTag = itemView.findViewById(R.id.task_date_tag);
         }
 
-        void bind(TaskModel task) {
+        void bind(TaskModel task, OnTaskClickListener listener) {
             title.setText(task.getTitle());
             dateTag.setText(task.getDateTag());
             checkbox.setChecked(task.isCompleted());
@@ -131,9 +133,15 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             // Strikethrough effect when completed
             updateStrikethrough(task.isCompleted());
 
-            checkbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            // Using setOnClickListener to only trigger on manual clicks, bypassing
+            // RecyclerView recycling
+            checkbox.setOnClickListener(v -> {
+                boolean isChecked = checkbox.isChecked();
                 task.setCompleted(isChecked);
                 updateStrikethrough(isChecked);
+                if (listener != null) {
+                    listener.onTaskCheckedChanged(task, isChecked);
+                }
             });
         }
 
