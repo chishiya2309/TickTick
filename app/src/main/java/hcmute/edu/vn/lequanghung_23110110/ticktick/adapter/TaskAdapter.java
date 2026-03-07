@@ -22,9 +22,18 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private final List<TaskListItem> items;
+    private OnTaskClickListener listener;
+
+    public interface OnTaskClickListener {
+        void onTaskClick(TaskModel task);
+    }
 
     public TaskAdapter(List<TaskListItem> items) {
         this.items = items;
+    }
+
+    public void setOnTaskClickListener(OnTaskClickListener listener) {
+        this.listener = listener;
     }
 
     @Override
@@ -54,6 +63,11 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         } else if (holder instanceof TaskViewHolder) {
             TaskModel task = (TaskModel) items.get(position);
             ((TaskViewHolder) holder).bind(task);
+            holder.itemView.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onTaskClick(task);
+                }
+            });
         }
     }
 

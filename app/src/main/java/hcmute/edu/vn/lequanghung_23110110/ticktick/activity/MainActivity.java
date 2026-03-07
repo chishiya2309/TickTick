@@ -44,6 +44,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.TaskAdapter;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.AddListDialogFragment;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.DatePickerBottomSheet;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.TaskDetailBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskHeader;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskListItem;
@@ -670,6 +671,13 @@ public class MainActivity extends AppCompatActivity {
 
         taskList = new ArrayList<>();
         taskAdapter = new TaskAdapter(taskList);
+        taskAdapter.setOnTaskClickListener(task -> {
+            TaskDetailBottomSheet bottomSheet = new TaskDetailBottomSheet(task);
+            bottomSheet.setOnTaskUpdatedListener(() -> {
+                loadTasksForList(currentListId); // Refresh after toggle completion or title edit
+            });
+            bottomSheet.show(getSupportFragmentManager(), "TaskDetailBottomSheet");
+        });
         taskRecyclerView.setAdapter(taskAdapter);
     }
 
@@ -764,6 +772,7 @@ public class MainActivity extends AppCompatActivity {
         // ═══ NÚT GỬI — Lưu task với dateTag ═══
         sheetView.findViewById(R.id.btn_submit_task).setOnClickListener(v -> {
             String title = inputTitle.getText().toString().trim();
+            String description = inputDescription.getText().toString().trim();
 
             if (TextUtils.isEmpty(title)) {
                 inputTitle.setError("Nhập tiêu đề task");
@@ -774,7 +783,7 @@ public class MainActivity extends AppCompatActivity {
             // Lưu vào SQLite — dùng selectedDateTag[0] làm dateTag, selectedDateMillis chứa
             // mốc DueDate
             long finalDueDate = selectedDateMillis[0] > 0 ? selectedDateMillis[0] : -1;
-            dbHelper.insertTask(title, currentListId, selectedDateTag[0], finalDueDate);
+            dbHelper.insertTask(title, description, currentListId, selectedDateTag[0], finalDueDate);
 
             loadTasksForList(currentListId);
             bottomSheet.dismiss();

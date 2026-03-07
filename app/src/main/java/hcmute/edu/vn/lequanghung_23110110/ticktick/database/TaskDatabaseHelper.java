@@ -18,7 +18,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "ticktick.db";
-    private static final int DB_VERSION = 6; // Nâng cấp để reset database
+    private static final int DB_VERSION = 7; // Nâng cấp để reset database và thêm description
 
     // === Table: lists ===
     private static final String TABLE_LISTS = "lists";
@@ -32,6 +32,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     private static final String TABLE_TASKS = "tasks";
     private static final String COL_TASK_ID = "_id";
     private static final String COL_TASK_TITLE = "title";
+    private static final String COL_TASK_DESCRIPTION = "description";
     private static final String COL_TASK_LIST_ID = "list_id";
     private static final String COL_TASK_DATE_TAG = "date_tag";
     private static final String COL_TASK_DUE_DATE = "due_date_millis";
@@ -65,6 +66,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE " + TABLE_TASKS + " ("
                 + COL_TASK_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + COL_TASK_TITLE + " TEXT NOT NULL, "
+                + COL_TASK_DESCRIPTION + " TEXT, "
                 + COL_TASK_LIST_ID + " INTEGER NOT NULL, "
                 + COL_TASK_DATE_TAG + " TEXT, "
                 + COL_TASK_DUE_DATE + " INTEGER DEFAULT -1, "
@@ -84,7 +86,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        if (oldVersion < 6) {
+        if (oldVersion < 7) {
             // Reset DB theo yêu cầu của User để test Default Lists
             db.execSQL("DROP TABLE IF EXISTS " + TABLE_TASKS);
             db.execSQL("DROP TABLE IF EXISTS " + TABLE_LISTS);
@@ -111,16 +113,17 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         long yesterdayMillis = todayMillis - (24 * 60 * 60 * 1000L);
         long tomorrowMillis = todayMillis + (24 * 60 * 60 * 1000L);
 
-        insertTaskDirect(db, "Test", 1, "Hôm nay", todayMillis, false); // Hôm nay
-        insertTaskDirect(db, "Overdue Sample", 1, "Hôm qua", yesterdayMillis, false); // Quá hạn
-        insertTaskDirect(db, "Test Work", 5, "", -1, false); // Work (ID=5 do 2 system list mới đẩy)
-        insertTaskDirect(db, "Test Tomorrow", 5, "Ngày mai", tomorrowMillis, false);
+        insertTaskDirect(db, "Test", "", 1, "Hôm nay", todayMillis, false); // Hôm nay
+        insertTaskDirect(db, "Overdue Sample", "", 1, "Hôm qua", yesterdayMillis, false); // Quá hạn
+        insertTaskDirect(db, "Test Work", "", 5, "", -1, false); // Work (ID=5 do 2 system list mới đẩy)
+        insertTaskDirect(db, "Test Tomorrow", "", 5, "Ngày mai", tomorrowMillis, false);
     }
 
-    private void insertTaskDirect(SQLiteDatabase db, String title,
+    private void insertTaskDirect(SQLiteDatabase db, String title, String description,
             int listId, String dateTag, long dueDateMillis, boolean completed) {
         ContentValues cv = new ContentValues();
         cv.put(COL_TASK_TITLE, title);
+        cv.put(COL_TASK_DESCRIPTION, description);
         cv.put(COL_TASK_LIST_ID, listId);
         cv.put(COL_TASK_DATE_TAG, dateTag);
         cv.put(COL_TASK_DUE_DATE, dueDateMillis);
@@ -147,6 +150,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
             TaskModel task = new TaskModel(
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DESCRIPTION)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
@@ -185,6 +189,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
             TaskModel task = new TaskModel(
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DESCRIPTION)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
@@ -218,6 +223,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
             TaskModel task = new TaskModel(
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DESCRIPTION)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
@@ -249,6 +255,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
             TaskModel task = new TaskModel(
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DESCRIPTION)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
@@ -290,6 +297,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
             TaskModel task = new TaskModel(
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DESCRIPTION)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
@@ -390,10 +398,11 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     }
 
     /** Thêm một task mới */
-    public long insertTask(String title, int listId, String dateTag, long dueDateMillis) {
+    public long insertTask(String title, String description, int listId, String dateTag, long dueDateMillis) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put(COL_TASK_TITLE, title);
+        cv.put(COL_TASK_DESCRIPTION, description);
         cv.put(COL_TASK_LIST_ID, listId);
         cv.put(COL_TASK_DATE_TAG, dateTag);
         cv.put(COL_TASK_DUE_DATE, dueDateMillis);
@@ -443,6 +452,15 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         cv.put(COL_TASK_COMPLETED, completed ? 1 : 0);
         db.update(TABLE_TASKS, cv, COL_TASK_ID + " = ?",
                 new String[] { String.valueOf(taskId) });
+    }
+
+    /** Cập nhật toàn bộ thông tin cơ bản của task */
+    public void updateTaskDetails(int taskId, String title, String description) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COL_TASK_TITLE, title);
+        cv.put(COL_TASK_DESCRIPTION, description);
+        db.update(TABLE_TASKS, cv, COL_TASK_ID + " = ?", new String[] { String.valueOf(taskId) });
     }
 
     /** Xóa task */

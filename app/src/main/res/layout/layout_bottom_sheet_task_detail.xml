@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/main_surface"
+    android:paddingTop="12dp">
+
+    <!-- Top Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp">
+
+        <!-- List Selection -->
+        <LinearLayout
+            android:id="@+id/detail_list_selector"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/detail_list_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_personal"
+                android:contentDescription="List Icon" />
+            <TextView
+                android:id="@+id/detail_list_emoji"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textColor="@color/main_text_primary"
+                android:visibility="gone"/>
+            <TextView
+                android:id="@+id/detail_list_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Personal"
+                android:textColor="@color/main_text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <ImageView
+            android:id="@+id/detail_action_flag"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
+            android:src="@drawable/ic_action_flag"
+            android:contentDescription="Flag"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <ImageView
+            android:id="@+id/detail_action_more"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
+            android:layout_marginStart="8dp"
+            android:src="@drawable/ic_action_more"
+            android:contentDescription="More"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp">
+
+            <!-- Checkbox and Date Tag Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+
+                <CheckBox
+                    android:id="@+id/detail_checkbox"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:button="@null"
+                    android:background="@drawable/checkbox_selector" />
+
+                <!-- Date Tag -->
+                <TextView
+                    android:id="@+id/detail_date_tag"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:text=""
+                    android:textColor="#2196F3"
+                    android:textSize="14sp"
+                    android:visibility="gone"
+                    android:drawableEnd="@drawable/ic_action_reminder"
+                    android:drawablePadding="4dp"/>
+            </LinearLayout>
+
+            <!-- Title -->
+            <EditText
+                android:id="@+id/detail_task_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:hint="@string/hint_task_title"
+                android:textColorHint="@color/main_text_secondary"
+                android:textColor="@color/main_text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"
+                android:inputType="textCapSentences|textMultiLine"
+                android:minLines="1"
+                android:maxLines="4"/>
+
+            <!-- Description -->
+            <EditText
+                android:id="@+id/detail_task_description"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:hint="Thêm mô tả"
+                android:textColorHint="@color/main_text_secondary"
+                android:textColor="@color/main_text_secondary"
+                android:textSize="15sp"
+                android:inputType="textCapSentences|textMultiLine"
+                android:minLines="1" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Bottom Action Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp">
+
+        <ImageView
+            android:id="@+id/detail_action_tag"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
+            android:src="@drawable/ic_tag"
+            android:contentDescription="Tag"
+            android:clickable="true"
+            android:focusable="true"/>
+
+        <ImageView
+            android:id="@+id/detail_action_checklist"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
+            android:layout_marginStart="12dp"
+            android:src="@drawable/ic_action_grid"
+            android:contentDescription="Checklist"
+            android:clickable="true"
+            android:focusable="true"/>
+
+        <ImageView
+            android:id="@+id/detail_action_attach"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
+            android:layout_marginStart="12dp"
+            app:tint="@color/main_text_secondary"
+            android:src="@drawable/ic_action_more"
+            android:contentDescription="Attach"
+            android:clickable="true"
+            android:focusable="true"/>
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Đã tạo hôm nay"
+            android:textSize="12sp"
+            android:textColor="@color/main_text_secondary"
+            android:visibility="gone"/>
+
+    </LinearLayout>
+
+</LinearLayout>
