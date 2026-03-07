@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +18,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "ticktick.db";
-    private static final int DB_VERSION = 3; // Nâng cấp để thêm cột is_pinned
+    private static final int DB_VERSION = 6; // Nâng cấp để reset database
 
     // === Table: lists ===
     private static final String TABLE_LISTS = "lists";
@@ -33,6 +34,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     private static final String COL_TASK_TITLE = "title";
     private static final String COL_TASK_LIST_ID = "list_id";
     private static final String COL_TASK_DATE_TAG = "date_tag";
+    private static final String COL_TASK_DUE_DATE = "due_date_millis";
     private static final String COL_TASK_COMPLETED = "is_completed";
     private static final String COL_TASK_CREATED = "created_at";
 
@@ -65,6 +67,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 + COL_TASK_TITLE + " TEXT NOT NULL, "
                 + COL_TASK_LIST_ID + " INTEGER NOT NULL, "
                 + COL_TASK_DATE_TAG + " TEXT, "
+                + COL_TASK_DUE_DATE + " INTEGER DEFAULT -1, "
                 + COL_TASK_COMPLETED + " INTEGER DEFAULT 0, "
                 + COL_TASK_CREATED + " INTEGER DEFAULT (strftime('%s','now')), "
                 + "FOREIGN KEY (" + COL_TASK_LIST_ID + ") REFERENCES "
@@ -81,18 +84,18 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        if (oldVersion < 2) {
-            db.execSQL("ALTER TABLE " + TABLE_LISTS + " ADD COLUMN " + COL_LIST_ORDER + " INTEGER DEFAULT 0");
-        }
-        if (oldVersion < 3) {
-            db.execSQL("ALTER TABLE " + TABLE_LISTS + " ADD COLUMN " + COL_LIST_IS_PINNED + " INTEGER DEFAULT 0");
+        if (oldVersion < 6) {
+            // Reset DB theo yêu cầu của User để test Default Lists
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_TASKS);
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_LISTS);
+            onCreate(db);
         }
     }
 
     private void seedDefaultLists(SQLiteDatabase db) {
-        String[] lists = { "Hôm nay", "Hộp thư đến", "Work", "Personal",
+        String[] lists = { "Hôm nay", "Ngày mai", "7 ngày tới", "Hộp thư đến", "Work", "Personal",
                 "Shopping", "Learning", "Wish List", "Fitness" };
-        String[] icons = { "ic_today", "ic_inbox", "ic_work", "ic_personal",
+        String[] icons = { "ic_today", "ic_quick_tomorrow", "ic_quick_next_week", "ic_inbox", "ic_work", "ic_personal",
                 "ic_shopping", "ic_learning", "ic_wishlist", "ic_fitness" };
 
         for (int i = 0; i < lists.length; i++) {
@@ -104,18 +107,23 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         }
 
         // Seed sample tasks
-        insertTaskDirect(db, "Test", 1, "Hôm nay", false); // list_id=1 (Hôm nay)
-        insertTaskDirect(db, "Coursera learning time", 1, "Hôm nay", false);
-        insertTaskDirect(db, "Test", 3, "", false); // list_id=3 (Work)
-        insertTaskDirect(db, "Test", 3, "Ngày mai", false);
+        long todayMillis = System.currentTimeMillis();
+        long yesterdayMillis = todayMillis - (24 * 60 * 60 * 1000L);
+        long tomorrowMillis = todayMillis + (24 * 60 * 60 * 1000L);
+
+        insertTaskDirect(db, "Test", 1, "Hôm nay", todayMillis, false); // Hôm nay
+        insertTaskDirect(db, "Overdue Sample", 1, "Hôm qua", yesterdayMillis, false); // Quá hạn
+        insertTaskDirect(db, "Test Work", 5, "", -1, false); // Work (ID=5 do 2 system list mới đẩy)
+        insertTaskDirect(db, "Test Tomorrow", 5, "Ngày mai", tomorrowMillis, false);
     }
 
     private void insertTaskDirect(SQLiteDatabase db, String title,
-            int listId, String dateTag, boolean completed) {
+            int listId, String dateTag, long dueDateMillis, boolean completed) {
         ContentValues cv = new ContentValues();
         cv.put(COL_TASK_TITLE, title);
         cv.put(COL_TASK_LIST_ID, listId);
         cv.put(COL_TASK_DATE_TAG, dateTag);
+        cv.put(COL_TASK_DUE_DATE, dueDateMillis);
         cv.put(COL_TASK_COMPLETED, completed ? 1 : 0);
         db.insert(TABLE_TASKS, null, cv);
     }
@@ -141,6 +149,150 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1);
+            tasks.add(task);
+        }
+        cursor.close();
+        return tasks;
+    }
+
+    /** Lấy tất cả tasks quá hạn và hôm nay */
+    public List<TaskModel> getTodayAndOverdueTasks(long startOfTodayMillis, long endOfTodayMillis) {
+        List<TaskModel> tasks = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+
+        // Lấy tất cả Task:
+        // 1. Quá hạn: due_date_millis > 0 AND due_date_millis < startOfTodayMillis AND
+        // chưa hoàn thành
+        // 2. Hôm nay: due_date_millis >= startOfTodayMillis AND due_date_millis <=
+        // endOfTodayMillis AND chưa hoàn thành
+        // (Hoặc date_tag = 'Hôm nay' phòng trường hợp task cũ)
+        String selection = "((" + COL_TASK_DUE_DATE + " > 0 AND " + COL_TASK_DUE_DATE + " < ?) OR " +
+                "(" + COL_TASK_DUE_DATE + " >= ? AND " + COL_TASK_DUE_DATE + " <= ?) OR " +
+                "(" + COL_TASK_DATE_TAG + " = 'Hôm nay')) AND " + COL_TASK_COMPLETED + " = 0";
+
+        String[] selectionArgs = new String[] {
+                String.valueOf(startOfTodayMillis),
+                String.valueOf(startOfTodayMillis),
+                String.valueOf(endOfTodayMillis)
+        };
+
+        Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null,
+                COL_TASK_DUE_DATE + " ASC");
+
+        while (cursor.moveToNext()) {
+            TaskModel task = new TaskModel(
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1);
+            tasks.add(task);
+        }
+        cursor.close();
+        return tasks;
+    }
+
+    /** Lấy tất cả tasks của ngày mai (không có quá hạn) */
+    public List<TaskModel> getTomorrowTasks(long startOfTomorrowMillis, long endOfTomorrowMillis) {
+        List<TaskModel> tasks = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+
+        // 1. Chỉ của ngày mai: due_date_millis >= startOfTomorrowMillis AND
+        // due_date_millis <= endOfTomorrowMillis AND chưa hoàn thành
+        // (Hoặc date_tag = 'Ngày mai' phòng trường hợp task cũ)
+        String selection = "((" + COL_TASK_DUE_DATE + " >= ? AND " + COL_TASK_DUE_DATE + " <= ?) OR " +
+                "(" + COL_TASK_DATE_TAG + " = 'Ngày mai')) AND " + COL_TASK_COMPLETED + " = 0";
+
+        String[] selectionArgs = new String[] {
+                String.valueOf(startOfTomorrowMillis),
+                String.valueOf(endOfTomorrowMillis)
+        };
+
+        Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null,
+                COL_TASK_DUE_DATE + " ASC");
+
+        while (cursor.moveToNext()) {
+            TaskModel task = new TaskModel(
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1);
+            tasks.add(task);
+        }
+        cursor.close();
+        return tasks;
+    }
+
+    /** Lấy tất cả tasks của 7 ngày tới (không lấy quá hạn) */
+    public List<TaskModel> getNext7DaysTasks(long startOfNext7DaysMillis, long endOfNext7DaysMillis) {
+        List<TaskModel> tasks = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+
+        // Chỉ lấy trong 7 ngày tới
+        String selection = "((" + COL_TASK_DUE_DATE + " >= ? AND " + COL_TASK_DUE_DATE + " <= ?) OR " +
+                "(" + COL_TASK_DATE_TAG + " = '7 ngày tới')) AND " + COL_TASK_COMPLETED + " = 0";
+
+        String[] selectionArgs = new String[] {
+                String.valueOf(startOfNext7DaysMillis),
+                String.valueOf(endOfNext7DaysMillis)
+        };
+
+        Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null,
+                COL_TASK_DUE_DATE + " ASC");
+
+        while (cursor.moveToNext()) {
+            TaskModel task = new TaskModel(
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1);
+            tasks.add(task);
+        }
+        cursor.close();
+        return tasks;
+    }
+
+    /**
+     * Lấy tất cả tasks cho màn hình "7 ngày tới" (Gồm Quá hạn, Hôm nay, Ngày mai, 7
+     * ngày tới)
+     */
+    public List<TaskModel> getAllTasksFor7DaysView(long startOfTodayMillis, long endOfNext7DaysMillis) {
+        List<TaskModel> tasks = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+
+        // Lấy tất cả Task:
+        // 1. Quá hạn: due_date_millis > 0 AND due_date_millis < startOfTodayMillis
+        // 2. Trong 7 ngày: due_date_millis >= startOfTodayMillis AND due_date_millis <=
+        // endOfNext7DaysMillis
+        // 3. Các task cũ chưa có millis nhưng có date_tag hợp lệ
+        String selection = "((" + COL_TASK_DUE_DATE + " > 0 AND " + COL_TASK_DUE_DATE + " < ?) OR " +
+                "(" + COL_TASK_DUE_DATE + " >= ? AND " + COL_TASK_DUE_DATE + " <= ?) OR " +
+                "(" + COL_TASK_DATE_TAG + " IN ('Hôm nay', 'Ngày mai', '7 ngày tới', 'Hôm qua'))) AND "
+                + COL_TASK_COMPLETED + " = 0";
+
+        String[] selectionArgs = new String[] {
+                String.valueOf(startOfTodayMillis),
+                String.valueOf(startOfTodayMillis),
+                String.valueOf(endOfNext7DaysMillis)
+        };
+
+        Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null,
+                COL_TASK_DUE_DATE + " ASC");
+
+        while (cursor.moveToNext()) {
+            TaskModel task = new TaskModel(
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1);
             tasks.add(task);
         }
@@ -174,37 +326,89 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                         + " GROUP BY " + COL_TASK_LIST_ID,
                 null);
         while (cursor.moveToNext()) {
-            counts.put(cursor.getInt(0), cursor.getInt(1));
+            int listId = cursor.getInt(0);
+            if (listId > 3) {
+                counts.put(listId, cursor.getInt(1));
+            }
         }
         cursor.close();
+
+        // --- TÍNH TOÁN SMART LIST (ID 1, 2, 3) ---
+        long now = System.currentTimeMillis();
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(now);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        long startOfToday = cal.getTimeInMillis();
+        cal.add(Calendar.DAY_OF_MONTH, 1);
+        long endOfToday = cal.getTimeInMillis() - 1;
+
+        long startOfTomorrow = endOfToday + 1;
+        cal.add(Calendar.DAY_OF_MONTH, 1);
+        long endOfTomorrow = cal.getTimeInMillis() - 1;
+
+        cal.add(Calendar.DAY_OF_MONTH, 6);
+        long endOfNext7Days = cal.getTimeInMillis() - 1;
+
+        // 1. Hôm nay & Quá hạn
+        String todaySelection = "((" + COL_TASK_DUE_DATE + " > 0 AND " + COL_TASK_DUE_DATE + " <= ?) OR " +
+                "(" + COL_TASK_DATE_TAG + " = 'Hôm nay')) AND " + COL_TASK_COMPLETED + " = 0";
+        String[] todayArgs = { String.valueOf(endOfToday) };
+
+        Cursor cursorToday = db.query(TABLE_TASKS, new String[] { "COUNT(*)" }, todaySelection, todayArgs, null, null,
+                null);
+        if (cursorToday.moveToFirst())
+            counts.put(1, cursorToday.getInt(0));
+        cursorToday.close();
+
+        // 2. Ngày mai (không lấy quá hạn)
+        String tomorrowSelection = "((" + COL_TASK_DUE_DATE + " >= ? AND " + COL_TASK_DUE_DATE + " <= ?) OR " +
+                "(" + COL_TASK_DATE_TAG + " = 'Ngày mai')) AND " + COL_TASK_COMPLETED + " = 0";
+        String[] tomorrowArgs = { String.valueOf(startOfTomorrow), String.valueOf(endOfTomorrow) };
+
+        Cursor cursorTomorrow = db.query(TABLE_TASKS, new String[] { "COUNT(*)" }, tomorrowSelection, tomorrowArgs,
+                null, null, null);
+        if (cursorTomorrow.moveToFirst())
+            counts.put(2, cursorTomorrow.getInt(0));
+        cursorTomorrow.close();
+
+        // 3. 7 ngày tới (không lấy quá hạn - nhưng BAO GỒM Hôm nay và Ngày mai)
+        String next7DaysSelection = "((" + COL_TASK_DUE_DATE + " >= ? AND " + COL_TASK_DUE_DATE + " <= ?) OR " +
+                "(" + COL_TASK_DATE_TAG + " IN ('Hôm nay', 'Ngày mai', '7 ngày tới'))) AND " + COL_TASK_COMPLETED
+                + " = 0";
+        String[] next7DaysArgs = { String.valueOf(startOfToday), String.valueOf(endOfNext7Days) };
+
+        Cursor cursorNext7 = db.query(TABLE_TASKS, new String[] { "COUNT(*)" }, next7DaysSelection, next7DaysArgs, null,
+                null, null);
+        if (cursorNext7.moveToFirst())
+            counts.put(3, cursorNext7.getInt(0));
+        cursorNext7.close();
+
         return counts;
     }
 
-    /** Thêm task mới */
-    public long insertTask(String title, int listId, String dateTag) {
+    /** Thêm một task mới */
+    public long insertTask(String title, int listId, String dateTag, long dueDateMillis) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put(COL_TASK_TITLE, title);
         cv.put(COL_TASK_LIST_ID, listId);
         cv.put(COL_TASK_DATE_TAG, dateTag);
+        cv.put(COL_TASK_DUE_DATE, dueDateMillis);
         cv.put(COL_TASK_COMPLETED, 0);
         return db.insert(TABLE_TASKS, null, cv);
     }
 
-    /** Thêm danh sách mới (Custom List) - Thêm vào trên cùng */
-    public long insertList(String name, String iconName) {
+    /** Thêm danh sách mới (Custom List) */
+    public void insertList(String name, String iconName) {
         SQLiteDatabase db = getWritableDatabase();
-
-        // Đẩy toàn bộ các Custom List (ngoài Hôm nay & Hộp thư đến) xuống 1 bậc
-        db.execSQL("UPDATE " + TABLE_LISTS +
-                " SET " + COL_LIST_ORDER + " = " + COL_LIST_ORDER + " + 1 " +
-                " WHERE " + COL_LIST_ID + " > 2");
-
         ContentValues cv = new ContentValues();
         cv.put(COL_LIST_NAME, name);
         cv.put(COL_LIST_ICON, iconName);
         cv.put(COL_LIST_ORDER, 0); // Đặt Item này lên đầu danh sách Custom
-        return db.insert(TABLE_LISTS, null, cv);
+        db.insert(TABLE_LISTS, null, cv);
     }
 
     /** Cập nhật danh sách (Custom List) */
@@ -357,10 +561,10 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     public Map<String, String> getAllCustomLists() {
         Map<String, String> lists = new java.util.LinkedHashMap<>();
         SQLiteDatabase db = getReadableDatabase();
-        // Skip list_id 1 và 2 ("Hôm nay", "Hộp thư đến") vì đó thuộc Navigation items
-        // mặc định
+        // Skip list_id 1 đến 4 ("Hôm nay", "Ngày mai", "7 ngày tới", "Hộp thư đến") vì
+        // đó thuộc Navigation items mặc định
         Cursor cursor = db.query(TABLE_LISTS, new String[] { COL_LIST_NAME, COL_LIST_ICON },
-                COL_LIST_ID + " > 2", null, null, null, COL_LIST_ORDER + " ASC, " + COL_LIST_ID + " ASC");
+                COL_LIST_ID + " > 4", null, null, null, COL_LIST_ORDER + " ASC, " + COL_LIST_ID + " ASC");
 
         while (cursor.moveToNext()) {
             lists.put(cursor.getString(0), cursor.getString(1));

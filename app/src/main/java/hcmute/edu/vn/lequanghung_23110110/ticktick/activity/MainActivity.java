@@ -32,7 +32,10 @@ import android.graphics.drawable.ColorDrawable;
 import android.widget.PopupWindow;
 
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
@@ -42,6 +45,8 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.AddListDialogFragment;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.DatePickerBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskHeader;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskListItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.PinnedListAdapter;
 import android.widget.ImageView;
@@ -53,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
 
     private RecyclerView taskRecyclerView;
     private TaskAdapter taskAdapter;
-    private List<TaskModel> taskList;
+    private List<TaskListItem> taskList;
     private DrawerLayout drawerLayout;
     private View emptyStateContainer;
     private TextView toolbarTitle;
@@ -159,22 +164,210 @@ public class MainActivity extends AppCompatActivity {
      * - Nếu 0 tasks → hiện Empty State
      * - Nếu ≥1 task → hiện RecyclerView
      */
+    private boolean showOverdue = true;
+    private boolean showToday = true;
+    private boolean showTomorrow = true;
+    private java.util.HashMap<String, Boolean> groupStates = new java.util.HashMap<>();
+
     private void loadTasksForList(int listId, int iconResId, String emojiIcon) {
         currentListId = listId;
-
-        List<TaskModel> tasks = dbHelper.getTasksByListId(listId);
         String listName = dbHelper.getListNameById(listId);
 
         // Cập nhật toolbar với cả icon
         updateToolbarForList(listName, iconResId, emojiIcon);
 
-        // Update task list
         taskList.clear();
-        taskList.addAll(tasks);
+
+        if (listId == 1) { // 1 là ID của "Hôm nay"
+            // Tính toán giới hạn "Hôm nay"
+            long now = System.currentTimeMillis();
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(now);
+            cal.set(Calendar.HOUR_OF_DAY, 0);
+            cal.set(Calendar.MINUTE, 0);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+            long startOfToday = cal.getTimeInMillis();
+
+            cal.add(Calendar.DAY_OF_MONTH, 1);
+            long endOfToday = cal.getTimeInMillis() - 1;
+
+            List<TaskModel> allTasks = dbHelper.getTodayAndOverdueTasks(startOfToday, endOfToday);
+
+            // Chia hai nhóm
+            List<TaskModel> overdueTasks = new ArrayList<>();
+            List<TaskModel> todayTasks = new ArrayList<>();
+
+            for (TaskModel t : allTasks) {
+                if (t.getDueDateMillis() > 0 && t.getDueDateMillis() < startOfToday) {
+                    overdueTasks.add(t);
+                } else {
+                    todayTasks.add(t);
+                }
+            }
+
+            if (!overdueTasks.isEmpty()) {
+                taskList.add(new TaskHeader("QUÁ HẠN", overdueTasks.size(), R.color.red_delete, showOverdue, () -> {
+                    showOverdue = !showOverdue;
+                    loadTasksForList(listId, iconResId, emojiIcon);
+                }));
+                if (showOverdue)
+                    taskList.addAll(overdueTasks);
+            }
+
+            if (!todayTasks.isEmpty() || overdueTasks.isEmpty()) {
+                // Luôn hiện header Hôm nay nếu có task, hoặc nếu Không có gì cả Quá Hạn (để
+                // tránh màn hình trống trơn ko header)
+                // Tuy nhiên ta chỉ render header khi thực sự cần. Tốt nhất là hiện Header HÔM
+                // NAY nếu có task
+                if (!todayTasks.isEmpty()) {
+                    taskList.add(
+                            new TaskHeader("HÔM NAY", todayTasks.size(), R.color.main_text_secondary, showToday, () -> {
+                                showToday = !showToday;
+                                loadTasksForList(listId, iconResId, emojiIcon);
+                            }));
+                    if (showToday)
+                        taskList.addAll(todayTasks);
+                }
+            }
+        } else if (listId == 2) { // 2 là ID của "Ngày mai"
+            long now = System.currentTimeMillis();
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(now);
+            cal.set(Calendar.HOUR_OF_DAY, 0);
+            cal.set(Calendar.MINUTE, 0);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+            cal.add(Calendar.DAY_OF_MONTH, 1);
+            long startOfTomorrow = cal.getTimeInMillis();
+
+            cal.add(Calendar.DAY_OF_MONTH, 1);
+            long endOfTomorrow = cal.getTimeInMillis() - 1;
+
+            List<TaskModel> tomorrowTasks = dbHelper.getTomorrowTasks(startOfTomorrow, endOfTomorrow);
+
+            if (!tomorrowTasks.isEmpty()) {
+                taskList.add(new TaskHeader("NGÀY MAI", tomorrowTasks.size(), R.color.main_text_secondary, showTomorrow,
+                        () -> {
+                            showTomorrow = !showTomorrow;
+                            loadTasksForList(listId, iconResId, emojiIcon);
+                        }));
+                if (showTomorrow) {
+                    taskList.addAll(tomorrowTasks);
+                }
+            }
+        } else if (listId == 3) { // 3 là ID của "7 ngày tới"
+            long now = System.currentTimeMillis();
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(now);
+            cal.set(Calendar.HOUR_OF_DAY, 0);
+            cal.set(Calendar.MINUTE, 0);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+            long startOfToday = cal.getTimeInMillis();
+
+            cal.add(Calendar.DAY_OF_MONTH, 7); // Tính tới 7 ngày kế tiếp (Bao gồm hôm nay là 1, ngày mai là 2... 5 ngày
+                                               // nữa)
+            long endOfNext7Days = cal.getTimeInMillis() - 1;
+
+            // Fetch tất cả tasks từ Quá hạn tới 7 ngày tới.
+            // Query DB: due_date_millis <= endOfNext7Days VÀ completed = 0
+            // (Tái sử dụng getAllTasksFor7DaysView để lấy cả các task gắn tag Ngày mai, Hôm
+            // nay)
+            List<TaskModel> allTasks = dbHelper.getAllTasksFor7DaysView(startOfToday, endOfNext7Days);
+
+            // Phân nhóm
+            List<TaskModel> overdueTasks = new ArrayList<>();
+            java.util.Map<String, List<TaskModel>> groupedTasks = new java.util.LinkedHashMap<>();
+
+            // Khởi tạo các mốc thời gian cơ bản để phân loại
+            java.text.SimpleDateFormat sdfDayOfWeek = new java.text.SimpleDateFormat("E",
+                    new java.util.Locale("vi", "VN"));
+            java.text.SimpleDateFormat sdfDate = new java.text.SimpleDateFormat("d", new java.util.Locale("vi", "VN"));
+            java.text.SimpleDateFormat sdfMonth = new java.text.SimpleDateFormat("M", new java.util.Locale("vi", "VN"));
+
+            // Tạo trước 7 khóa (Keys) cho 7 ngày để giữ đúng thứ tự từ Hôm nay -> 6 ngày kế
+            // tiếp
+            List<String> orderedKeys = new ArrayList<>();
+            Calendar tempCal = Calendar.getInstance();
+            tempCal.setTimeInMillis(startOfToday);
+            for (int i = 0; i < 7; i++) {
+                String key;
+                if (i == 0) {
+                    // Ví dụ: TH 7, HÔM NAY
+                    key = sdfDayOfWeek.format(tempCal.getTime()).toUpperCase() + ", HÔM NAY";
+                } else if (i == 1) {
+                    // Ví dụ: CN, NGÀY MAI
+                    key = sdfDayOfWeek.format(tempCal.getTime()).toUpperCase() + ", NGÀY MAI";
+                } else {
+                    // Ví dụ: TH 2, THG 3 9 (Thứ, Tháng Ngày)
+                    // Theo ảnh sample: "TH 2, THG 3 9"
+                    key = sdfDayOfWeek.format(tempCal.getTime()).toUpperCase() + ", THG "
+                            + sdfMonth.format(tempCal.getTime()) + " " + sdfDate.format(tempCal.getTime());
+                }
+                orderedKeys.add(key);
+                groupedTasks.put(key, new ArrayList<>());
+                tempCal.add(Calendar.DAY_OF_MONTH, 1);
+            }
+
+            // Phân loại task vào các nhóm
+            for (TaskModel t : allTasks) {
+                if (t.getDueDateMillis() > 0 && t.getDueDateMillis() < startOfToday) {
+                    overdueTasks.add(t);
+                } else if (t.getDueDateMillis() >= startOfToday && t.getDueDateMillis() <= endOfNext7Days) {
+                    // Chia theo từng ngày
+                    Calendar taskCal = Calendar.getInstance();
+                    taskCal.setTimeInMillis(t.getDueDateMillis());
+
+                    // Tính khoảng cách ngày so với StartOfToday
+                    long diffMillis = t.getDueDateMillis() - startOfToday;
+                    int daysDiff = (int) (diffMillis / (24 * 60 * 60 * 1000L));
+
+                    if (daysDiff >= 0 && daysDiff < 7) {
+                        String targetKey = orderedKeys.get(daysDiff);
+                        groupedTasks.get(targetKey).add(t);
+                    }
+                }
+            }
+
+            // Render UI
+            // 1. Quá hạn
+            if (!overdueTasks.isEmpty()) {
+                boolean isExpanded = groupStates.getOrDefault("QUÁ HẠN", true);
+                taskList.add(new TaskHeader("QUÁ HẠN", overdueTasks.size(), R.color.red_delete, isExpanded, () -> {
+                    groupStates.put("QUÁ HẠN", !isExpanded);
+                    loadTasksForList(listId, iconResId, emojiIcon);
+                }));
+                if (isExpanded) {
+                    taskList.addAll(overdueTasks);
+                }
+            }
+
+            // 2. Các ngày kế tiếp
+            for (String key : orderedKeys) {
+                List<TaskModel> tasksInGroup = groupedTasks.get(key);
+                if (!tasksInGroup.isEmpty()) {
+                    boolean isExpanded = groupStates.getOrDefault(key, true);
+                    taskList.add(
+                            new TaskHeader(key, tasksInGroup.size(), R.color.main_text_secondary, isExpanded, () -> {
+                                groupStates.put(key, !isExpanded);
+                                loadTasksForList(listId, iconResId, emojiIcon);
+                            }));
+                    if (isExpanded) {
+                        taskList.addAll(tasksInGroup);
+                    }
+                }
+            }
+        } else {
+            // Danh sách bình thường
+            List<TaskModel> tasks = dbHelper.getTasksByListId(listId);
+            taskList.addAll(tasks);
+        }
+
         taskAdapter.notifyDataSetChanged();
 
         // Toggle empty state vs task list
-        if (tasks.isEmpty()) {
+        if (taskList.isEmpty()) {
             emptyStateContainer.setVisibility(View.VISIBLE);
             taskRecyclerView.setVisibility(View.GONE);
         } else {
@@ -285,10 +478,10 @@ public class MainActivity extends AppCompatActivity {
                 int position = viewHolder.getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
                     DrawerMenuItem item = drawerItems.get(position);
-                    // Giả định hệ thống item & separator ở đầu có index từ 0 -> (số lượng item cố
-                    // định)
-                    // Ở đây, "Hôm nay", "Hộp thư đến" và 1 phân cách = 3 items đầu.
-                    if (item.getType() != DrawerMenuItem.ItemType.LIST || position < 3) {
+                    // Giả định hệ thống item & separator ở đầu có index từ 0 -> 4
+                    // Ở đây, "Hôm nay", "Ngày mai", "7 ngày tới", "Hộp thư đến" và 1 phân cách = 5
+                    // items đầu.
+                    if (item.getType() != DrawerMenuItem.ItemType.LIST || position < 5) {
                         return makeMovementFlags(0, 0); // Vô hiệu hóa kéo thả
                     }
                 }
@@ -302,7 +495,7 @@ public class MainActivity extends AppCompatActivity {
                 int targetPosition = target.getAdapterPosition();
 
                 // Kiểm tra xem vị trí đích có thuộc về Custom List không
-                if (targetPosition < 3 || drawerItems.get(targetPosition).getType() != DrawerMenuItem.ItemType.LIST) {
+                if (targetPosition < 5 || drawerItems.get(targetPosition).getType() != DrawerMenuItem.ItemType.LIST) {
                     return false; // Không cho phép hoán đổi vào đây
                 }
 
@@ -328,7 +521,7 @@ public class MainActivity extends AppCompatActivity {
                 List<String> orderedListNames = new ArrayList<>();
                 for (DrawerMenuItem item : drawerItems) {
                     // Chúng ta chỉ lấy ra các danh sách tùy chỉnh
-                    if (item.getType() == DrawerMenuItem.ItemType.LIST && drawerItems.indexOf(item) >= 3) {
+                    if (item.getType() == DrawerMenuItem.ItemType.LIST && drawerItems.indexOf(item) >= 5) {
                         orderedListNames.add(item.getTitle());
                     }
                 }
@@ -363,6 +556,14 @@ public class MainActivity extends AppCompatActivity {
                 DrawerMenuItem.ItemType.NAVIGATION).setSelected(true));
 
         items.add(new DrawerMenuItem(
+                "Ngày mai", R.drawable.ic_quick_tomorrow,
+                DrawerMenuItem.ItemType.NAVIGATION));
+
+        items.add(new DrawerMenuItem(
+                "7 ngày tới", R.drawable.ic_quick_next_week,
+                DrawerMenuItem.ItemType.NAVIGATION));
+
+        items.add(new DrawerMenuItem(
                 "Hộp thư đến", R.drawable.ic_inbox,
                 DrawerMenuItem.ItemType.NAVIGATION));
 
@@ -394,10 +595,16 @@ public class MainActivity extends AppCompatActivity {
         // Lưu vào DB
         dbHelper.insertList(name, emojiIcon);
 
-        DrawerMenuItem newItem = new DrawerMenuItem(name, emojiIcon, DrawerMenuItem.ItemType.LIST);
-        // Chèn item mới vào đầu phần custom list (sau separator ở vị trí 2)
-        drawerItems.add(3, newItem);
-        drawerAdapter.notifyItemInserted(3);
+        // Load lại Custom Lists
+        drawerItems.clear();
+        drawerItems.addAll(buildDrawerMenuItems());
+        drawerAdapter.notifyDataSetChanged();
+
+        // Cuộn tới item vừa thêm (Nằm ở index 5)
+        RecyclerView drawerRecyclerView = findViewById(R.id.drawer_recycler_view);
+        if (drawerItems.size() > 5) {
+            drawerRecyclerView.smoothScrollToPosition(5);
+        }
     }
 
     public void updateListInDrawer(int listId, String newName, String newEmojiIcon, int position) {
@@ -564,8 +771,10 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // Lưu vào SQLite — dùng selectedDateTag[0] làm dateTag
-            dbHelper.insertTask(title, currentListId, selectedDateTag[0]);
+            // Lưu vào SQLite — dùng selectedDateTag[0] làm dateTag, selectedDateMillis chứa
+            // mốc DueDate
+            long finalDueDate = selectedDateMillis[0] > 0 ? selectedDateMillis[0] : -1;
+            dbHelper.insertTask(title, currentListId, selectedDateTag[0], finalDueDate);
 
             loadTasksForList(currentListId);
             bottomSheet.dismiss();

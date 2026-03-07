@@ -1,10 +1,12 @@
 package hcmute.edu.vn.lequanghung_23110110.ticktick.adapter;
 
+import android.content.res.ColorStateList;
 import android.graphics.Paint;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -13,33 +15,86 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 
 import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskHeader;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskListItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 
-public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
+public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
-    private final List<TaskModel> taskList;
+    private final List<TaskListItem> items;
 
-    public TaskAdapter(List<TaskModel> taskList) {
-        this.taskList = taskList;
+    public TaskAdapter(List<TaskListItem> items) {
+        this.items = items;
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return items.get(position).getType();
     }
 
     @NonNull
     @Override
-    public TaskViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_task, parent, false);
-        return new TaskViewHolder(view);
+    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        if (viewType == TaskListItem.TYPE_HEADER) {
+            View view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_task_header, parent, false);
+            return new HeaderViewHolder(view);
+        } else {
+            View view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_task, parent, false);
+            return new TaskViewHolder(view);
+        }
     }
 
     @Override
-    public void onBindViewHolder(@NonNull TaskViewHolder holder, int position) {
-        TaskModel task = taskList.get(position);
-        holder.bind(task);
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+        if (holder instanceof HeaderViewHolder) {
+            TaskHeader header = (TaskHeader) items.get(position);
+            ((HeaderViewHolder) holder).bind(header);
+        } else if (holder instanceof TaskViewHolder) {
+            TaskModel task = (TaskModel) items.get(position);
+            ((TaskViewHolder) holder).bind(task);
+        }
     }
 
     @Override
     public int getItemCount() {
-        return taskList.size();
+        return items.size();
+    }
+
+    static class HeaderViewHolder extends RecyclerView.ViewHolder {
+        private final TextView title, count;
+        private final ImageView iconExpand;
+        private final View container;
+
+        HeaderViewHolder(@NonNull View itemView) {
+            super(itemView);
+            container = itemView;
+            title = itemView.findViewById(R.id.header_title);
+            count = itemView.findViewById(R.id.header_count);
+            iconExpand = itemView.findViewById(R.id.header_icon);
+        }
+
+        void bind(TaskHeader header) {
+            title.setText(header.getTitle());
+            count.setText(String.valueOf(header.getCount()));
+
+            // Apply text colors
+            int color = itemView.getContext().getColor(header.getColorResId());
+            title.setTextColor(color);
+            count.setTextColor(color);
+            iconExpand.setImageTintList(ColorStateList.valueOf(color));
+
+            // Set chevron state
+            iconExpand.setRotation(header.isExpanded() ? 0 : -90); // Down is expanded, Right is collapsed
+
+            // Setup toggling click
+            container.setOnClickListener(v -> {
+                if (header.getOnToggleListener() != null) {
+                    header.getOnToggleListener().run();
+                }
+            });
+        }
     }
 
     static class TaskViewHolder extends RecyclerView.ViewHolder {
