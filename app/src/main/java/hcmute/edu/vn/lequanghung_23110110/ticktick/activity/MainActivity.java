@@ -45,10 +45,12 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.AddListDialogFragment;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.DatePickerBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.TaskDetailBottomSheet;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.MoveTaskBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskHeader;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskListItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.TaskSwipeHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.PinnedListAdapter;
 import android.widget.ImageView;
 import android.text.TextUtils;
@@ -199,14 +201,30 @@ public class MainActivity extends AppCompatActivity {
             List<TaskModel> overdueTasks = new ArrayList<>();
             List<TaskModel> todayTasks = new ArrayList<>();
             List<TaskModel> completedTasks = new ArrayList<>();
+            List<TaskModel> pinnedTasks = new ArrayList<>();
 
             for (TaskModel t : allTasks) {
                 if (t.isCompleted()) {
                     completedTasks.add(t);
+                } else if (t.isPinned()) {
+                    pinnedTasks.add(t);
                 } else if (t.getDueDateMillis() > 0 && t.getDueDateMillis() < startOfToday) {
                     overdueTasks.add(t);
                 } else {
                     todayTasks.add(t);
+                }
+            }
+
+            // Xử lý nhóm Giao diện Ghim
+            if (!pinnedTasks.isEmpty()) {
+                boolean isExpanded = groupStates.getOrDefault("PINNED", true);
+                taskList.add(
+                        new TaskHeader("ĐÃ GHIM", pinnedTasks.size(), R.color.main_text_secondary, isExpanded, () -> {
+                            groupStates.put("PINNED", !isExpanded);
+                            loadTasksForList(listId, iconResId, emojiIcon);
+                        }));
+                if (isExpanded) {
+                    taskList.addAll(pinnedTasks);
                 }
             }
 
@@ -266,12 +284,28 @@ public class MainActivity extends AppCompatActivity {
 
             List<TaskModel> tomorrowTasks = new ArrayList<>();
             List<TaskModel> completedTasks = new ArrayList<>();
+            List<TaskModel> pinnedTasks = new ArrayList<>();
 
             for (TaskModel t : allTomorrowTasks) {
                 if (t.isCompleted()) {
                     completedTasks.add(t);
+                } else if (t.isPinned()) {
+                    pinnedTasks.add(t);
                 } else {
                     tomorrowTasks.add(t);
+                }
+            }
+
+            // Xử lý nhóm Giao diện Ghim
+            if (!pinnedTasks.isEmpty()) {
+                boolean isExpanded = groupStates.getOrDefault("PINNED", true);
+                taskList.add(
+                        new TaskHeader("ĐÃ GHIM", pinnedTasks.size(), R.color.main_text_secondary, isExpanded, () -> {
+                            groupStates.put("PINNED", !isExpanded);
+                            loadTasksForList(listId, iconResId, emojiIcon);
+                        }));
+                if (isExpanded) {
+                    taskList.addAll(pinnedTasks);
                 }
             }
 
@@ -355,9 +389,12 @@ public class MainActivity extends AppCompatActivity {
 
             // Phân loại task vào các nhóm
             List<TaskModel> completedTasks = new ArrayList<>();
+            List<TaskModel> pinnedTasks = new ArrayList<>();
             for (TaskModel t : allTasks) {
                 if (t.isCompleted()) {
                     completedTasks.add(t);
+                } else if (t.isPinned()) {
+                    pinnedTasks.add(t);
                 } else if (t.getDueDateMillis() > 0 && t.getDueDateMillis() < startOfToday) {
                     overdueTasks.add(t);
                 } else if (t.getDueDateMillis() >= startOfToday && t.getDueDateMillis() <= endOfNext7Days) {
@@ -377,6 +414,19 @@ public class MainActivity extends AppCompatActivity {
             }
 
             // Render UI
+            // 0. Nhóm Ghim
+            if (!pinnedTasks.isEmpty()) {
+                boolean isExpanded = groupStates.getOrDefault("PINNED", true);
+                taskList.add(
+                        new TaskHeader("ĐÃ GHIM", pinnedTasks.size(), R.color.main_text_secondary, isExpanded, () -> {
+                            groupStates.put("PINNED", !isExpanded);
+                            loadTasksForList(listId, iconResId, emojiIcon);
+                        }));
+                if (isExpanded) {
+                    taskList.addAll(pinnedTasks);
+                }
+            }
+
             // 1. Quá hạn
             if (!overdueTasks.isEmpty()) {
                 boolean isExpanded = groupStates.getOrDefault("QUÁ HẠN", true);
@@ -424,12 +474,27 @@ public class MainActivity extends AppCompatActivity {
 
             List<TaskModel> uncompletedTasks = new ArrayList<>();
             List<TaskModel> completedTasks = new ArrayList<>();
+            List<TaskModel> pinnedTasks = new ArrayList<>();
 
             for (TaskModel t : allTasks) {
                 if (t.isCompleted()) {
                     completedTasks.add(t);
+                } else if (t.isPinned()) {
+                    pinnedTasks.add(t);
                 } else {
                     uncompletedTasks.add(t);
+                }
+            }
+
+            if (!pinnedTasks.isEmpty()) {
+                boolean isExpanded = groupStates.getOrDefault("PINNED", true);
+                taskList.add(
+                        new TaskHeader("ĐÃ GHIM", pinnedTasks.size(), R.color.main_text_secondary, isExpanded, () -> {
+                            groupStates.put("PINNED", !isExpanded);
+                            loadTasksForList(listId, iconResId, emojiIcon);
+                        }));
+                if (isExpanded) {
+                    taskList.addAll(pinnedTasks);
                 }
             }
 
@@ -770,8 +835,78 @@ public class MainActivity extends AppCompatActivity {
                 dbHelper.updateTaskCompleted(task.getId(), isChecked);
                 loadTasksForList(currentListId); // UI sync
             }
+
+            @Override
+            public void onTaskPinClicked(TaskModel task) {
+                dbHelper.updateTaskPinned(task.getId(), !task.isPinned());
+                loadTasksForList(currentListId); // UI sync
+            }
+
+            @Override
+            public void onTaskDeleteClicked(TaskModel task) {
+                dbHelper.deleteTask(task.getId());
+                loadTasksForList(currentListId); // UI sync
+            }
+
+            @Override
+            public void onTaskMoveClicked(TaskModel task) {
+                MoveTaskBottomSheet moveSheet = new MoveTaskBottomSheet(task.getId(), task.getListId());
+                moveSheet.setOnTaskMovedListener((newListId, newListName, iconName) -> {
+                    // Refresh current view (task is now gone if we're in a specific list,
+                    // or maybe it's still visible if we're in "Today" etc.,
+                    // but loadTasksForList handles refreshing safely).
+                    loadTasksForList(currentListId);
+
+                    // Show custom Toast
+                    View layout = getLayoutInflater().inflate(R.layout.layout_toast_move, null);
+                    ImageView ivIcon = layout.findViewById(R.id.toast_icon);
+                    TextView tvEmoji = layout.findViewById(R.id.toast_emoji);
+                    TextView tvText = layout.findViewById(R.id.toast_text);
+
+                    tvText.setText("Đã di chuyển đến " + newListName);
+
+                    if (iconName != null && !iconName.isEmpty()) {
+                        if (iconName.startsWith("ic_")) {
+                            int resId = getResources().getIdentifier(iconName, "drawable", getPackageName());
+                            if (resId != 0) {
+                                ivIcon.setImageResource(resId);
+                                ivIcon.setVisibility(View.VISIBLE);
+                            }
+                        } else {
+                            tvEmoji.setText(iconName);
+                            tvEmoji.setVisibility(View.VISIBLE);
+                        }
+                    }
+
+                    Toast toast = new Toast(getApplicationContext());
+                    toast.setDuration(Toast.LENGTH_SHORT);
+                    toast.setView(layout);
+                    toast.show();
+                });
+                moveSheet.show(getSupportFragmentManager(), "MoveTaskBottomSheet");
+            }
+
+            @Override
+            public void onTaskDateClicked(TaskModel task) {
+                DatePickerBottomSheet datePicker = new DatePickerBottomSheet();
+                datePicker.setPreSelectedDate(task.getDueDateMillis());
+                datePicker.setOnDateSelectedListener((dateTag, dateMillis) -> {
+                    dbHelper.updateTaskDate(task.getId(), dateTag, dateMillis);
+                    loadTasksForList(currentListId);
+                });
+                datePicker.setOnDateClearedListener(() -> {
+                    dbHelper.updateTaskDate(task.getId(), null, 0);
+                    loadTasksForList(currentListId);
+                });
+                datePicker.show(getSupportFragmentManager(), "DatePickerBottomSheet");
+            }
         });
         taskRecyclerView.setAdapter(taskAdapter);
+
+        // Setup Swipe Helper
+        TaskSwipeHelper swipeHelper = new TaskSwipeHelper(this);
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(swipeHelper);
+        itemTouchHelper.attachToRecyclerView(taskRecyclerView);
     }
 
     // ═══════════════════════════════════════

@@ -1,43 +1,132 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:paddingHorizontal="16dp"
-    android:paddingVertical="14dp"
-    android:background="@color/main_bg">
+    android:layout_height="wrap_content">
 
-    <!-- Checkbox -->
-    <CheckBox
-        android:id="@+id/task_checkbox"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:button="@null"
-        android:background="@drawable/checkbox_selector"
-        android:layout_marginEnd="14dp" />
+    <!-- Actions Background Layer (Left) -->
+    <LinearLayout
+        android:layout_width="140dp"
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
+        
+        <FrameLayout
+            android:id="@+id/btn_complete"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="#15C193">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check" />
+        </FrameLayout>
 
-    <!-- Task Title -->
-    <TextView
-        android:id="@+id/task_title"
-        android:layout_width="0dp"
+        <FrameLayout
+            android:id="@+id/btn_pin"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="#FF9A00">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_move_top" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- Actions Background Layer (Right) -->
+    <LinearLayout
+        android:layout_width="210dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:orientation="horizontal">
+        
+        <FrameLayout
+            android:id="@+id/btn_move"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="#4285F4">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_swipe_move" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/btn_delete"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="#EA4335">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_swipe_delete" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/btn_date"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="#FBBC05">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_swipe_calendar" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- Foreground Task Item -->
+    <LinearLayout
+        android:id="@+id/task_foreground"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:textColor="@color/main_text_primary"
-        android:textSize="16sp"
-        android:maxLines="1"
-        android:ellipsize="end"
-        tools:text="Task name" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="14dp"
+        android:background="@color/main_bg"
+        android:clickable="true"
+        android:focusable="true">
 
-    <!-- Date Tag -->
-    <TextView
-        android:id="@+id/task_date_tag"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="@color/main_tag_text"
-        android:textSize="12sp"
-        android:layout_marginStart="8dp"
-        tools:text="Hôm nay" />
+        <!-- Checkbox -->
+        <CheckBox
+            android:id="@+id/task_checkbox"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:button="@null"
+            android:background="@drawable/checkbox_selector"
+            android:layout_marginEnd="14dp" />
 
-</LinearLayout>
+        <!-- Task Title -->
+        <TextView
+            android:id="@+id/task_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/main_text_primary"
+            android:textSize="16sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            tools:text="Task name" />
+
+        <!-- Date Tag -->
+        <TextView
+            android:id="@+id/task_date_tag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/main_tag_text"
+            android:textSize="12sp"
+            android:layout_marginStart="8dp"
+            tools:text="Hôm nay" />
+
+    </LinearLayout>
+</FrameLayout>

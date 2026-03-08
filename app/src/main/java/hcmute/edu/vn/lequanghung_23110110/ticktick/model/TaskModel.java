@@ -9,10 +9,11 @@ public class TaskModel implements TaskListItem {
     private String dateTag;
     private long dueDateMillis; // Actual time
     private boolean isCompleted;
+    private boolean isPinned;
 
     // Constructor đầy đủ (từ DB)
     public TaskModel(int id, String title, String description, int listId, String dateTag, long dueDateMillis,
-            boolean isCompleted) {
+            boolean isCompleted, boolean isPinned) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -20,6 +21,7 @@ public class TaskModel implements TaskListItem {
         this.dateTag = dateTag;
         this.dueDateMillis = dueDateMillis;
         this.isCompleted = isCompleted;
+        this.isPinned = isPinned;
     }
 
     // Constructor tạo mới (chưa có id)
@@ -31,6 +33,7 @@ public class TaskModel implements TaskListItem {
         this.dateTag = dateTag;
         this.dueDateMillis = dueDateMillis;
         this.isCompleted = false;
+        this.isPinned = false;
     }
 
     // --- Getters & Setters ---
@@ -88,6 +91,14 @@ public class TaskModel implements TaskListItem {
 
     public void setDueDateMillis(long dueDateMillis) {
         this.dueDateMillis = dueDateMillis;
+    }
+
+    public boolean isPinned() {
+        return isPinned;
+    }
+
+    public void setPinned(boolean pinned) {
+        isPinned = pinned;
     }
 
     @Override

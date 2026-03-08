@@ -13,12 +13,13 @@ import java.util.List;
 import java.util.Map;
 
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.model.ListModel;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 
 public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "ticktick.db";
-    private static final int DB_VERSION = 7; // Nâng cấp để reset database và thêm description
+    private static final int DB_VERSION = 8; // Nâng cấp để reset database và thêm description + is_pinned
 
     // === Table: lists ===
     private static final String TABLE_LISTS = "lists";
@@ -38,6 +39,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     private static final String COL_TASK_DUE_DATE = "due_date_millis";
     private static final String COL_TASK_COMPLETED = "is_completed";
     private static final String COL_TASK_CREATED = "created_at";
+    private static final String COL_TASK_IS_PINNED = "is_pinned"; // New column cho ghim task
 
     // Singleton
     private static TaskDatabaseHelper instance;
@@ -71,6 +73,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 + COL_TASK_DATE_TAG + " TEXT, "
                 + COL_TASK_DUE_DATE + " INTEGER DEFAULT -1, "
                 + COL_TASK_COMPLETED + " INTEGER DEFAULT 0, "
+                + COL_TASK_IS_PINNED + " INTEGER DEFAULT 0, "
                 + COL_TASK_CREATED + " INTEGER DEFAULT (strftime('%s','now')), "
                 + "FOREIGN KEY (" + COL_TASK_LIST_ID + ") REFERENCES "
                 + TABLE_LISTS + "(" + COL_LIST_ID + ")"
@@ -86,7 +89,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        if (oldVersion < 7) {
+        if (oldVersion < 8) {
             // Reset DB theo yêu cầu của User để test Default Lists
             db.execSQL("DROP TABLE IF EXISTS " + TABLE_TASKS);
             db.execSQL("DROP TABLE IF EXISTS " + TABLE_LISTS);
@@ -113,14 +116,14 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         long yesterdayMillis = todayMillis - (24 * 60 * 60 * 1000L);
         long tomorrowMillis = todayMillis + (24 * 60 * 60 * 1000L);
 
-        insertTaskDirect(db, "Test", "", 1, "Hôm nay", todayMillis, false); // Hôm nay
-        insertTaskDirect(db, "Overdue Sample", "", 1, "Hôm qua", yesterdayMillis, false); // Quá hạn
-        insertTaskDirect(db, "Test Work", "", 5, "", -1, false); // Work (ID=5 do 2 system list mới đẩy)
-        insertTaskDirect(db, "Test Tomorrow", "", 5, "Ngày mai", tomorrowMillis, false);
+        insertTaskDirect(db, "Test", "", 1, "Hôm nay", todayMillis, false, false); // Hôm nay
+        insertTaskDirect(db, "Overdue Sample", "", 1, "Hôm qua", yesterdayMillis, false, false); // Quá hạn
+        insertTaskDirect(db, "Test Work", "", 5, "", -1, false, false); // Work (ID=5 do 2 system list mới đẩy)
+        insertTaskDirect(db, "Test Tomorrow", "", 5, "Ngày mai", tomorrowMillis, false, false);
     }
 
     private void insertTaskDirect(SQLiteDatabase db, String title, String description,
-            int listId, String dateTag, long dueDateMillis, boolean completed) {
+            int listId, String dateTag, long dueDateMillis, boolean completed, boolean isPinned) {
         ContentValues cv = new ContentValues();
         cv.put(COL_TASK_TITLE, title);
         cv.put(COL_TASK_DESCRIPTION, description);
@@ -128,6 +131,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         cv.put(COL_TASK_DATE_TAG, dateTag);
         cv.put(COL_TASK_DUE_DATE, dueDateMillis);
         cv.put(COL_TASK_COMPLETED, completed ? 1 : 0);
+        cv.put(COL_TASK_IS_PINNED, isPinned ? 1 : 0);
         db.insert(TABLE_TASKS, null, cv);
     }
 
@@ -144,7 +148,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 COL_TASK_LIST_ID + " = ?",
                 new String[] { String.valueOf(listId) },
                 null, null,
-                COL_TASK_COMPLETED + " ASC, " + COL_TASK_CREATED + " DESC");
+                COL_TASK_IS_PINNED + " DESC, " + COL_TASK_COMPLETED + " ASC, " + COL_TASK_CREATED + " DESC");
 
         while (cursor.moveToNext()) {
             TaskModel task = new TaskModel(
@@ -154,7 +158,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1);
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1);
             tasks.add(task);
         }
         cursor.close();
@@ -183,7 +188,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         };
 
         Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null,
-                COL_TASK_DUE_DATE + " ASC");
+                COL_TASK_IS_PINNED + " DESC, " + COL_TASK_DUE_DATE + " ASC");
 
         while (cursor.moveToNext()) {
             TaskModel task = new TaskModel(
@@ -193,7 +198,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1);
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1);
             tasks.add(task);
         }
         cursor.close();
@@ -217,7 +223,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         };
 
         Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null,
-                COL_TASK_DUE_DATE + " ASC");
+                COL_TASK_IS_PINNED + " DESC, " + COL_TASK_DUE_DATE + " ASC");
 
         while (cursor.moveToNext()) {
             TaskModel task = new TaskModel(
@@ -227,7 +233,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1);
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1);
             tasks.add(task);
         }
         cursor.close();
@@ -249,7 +256,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         };
 
         Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null,
-                COL_TASK_DUE_DATE + " ASC");
+                COL_TASK_IS_PINNED + " DESC, " + COL_TASK_DUE_DATE + " ASC");
 
         while (cursor.moveToNext()) {
             TaskModel task = new TaskModel(
@@ -259,7 +266,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1);
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1);
             tasks.add(task);
         }
         cursor.close();
@@ -290,7 +298,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         };
 
         Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null,
-                COL_TASK_DUE_DATE + " ASC");
+                COL_TASK_IS_PINNED + " DESC, " + COL_TASK_DUE_DATE + " ASC");
 
         while (cursor.moveToNext()) {
             TaskModel task = new TaskModel(
@@ -300,7 +308,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1);
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1);
             tasks.add(task);
         }
         cursor.close();
@@ -406,6 +415,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         cv.put(COL_TASK_DATE_TAG, dateTag);
         cv.put(COL_TASK_DUE_DATE, dueDateMillis);
         cv.put(COL_TASK_COMPLETED, 0);
+        cv.put(COL_TASK_IS_PINNED, 0);
         return db.insert(TABLE_TASKS, null, cv);
     }
 
@@ -453,12 +463,38 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 new String[] { String.valueOf(taskId) });
     }
 
+    /** Cập nhật trạng thái ghim của task */
+    public void updateTaskPinned(int taskId, boolean isPinned) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COL_TASK_IS_PINNED, isPinned ? 1 : 0);
+        db.update(TABLE_TASKS, cv, COL_TASK_ID + " = ?",
+                new String[] { String.valueOf(taskId) });
+    }
+
     /** Cập nhật toàn bộ thông tin cơ bản của task */
     public void updateTaskDetails(int taskId, String title, String description) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put(COL_TASK_TITLE, title);
         cv.put(COL_TASK_DESCRIPTION, description);
+        db.update(TABLE_TASKS, cv, COL_TASK_ID + " = ?", new String[] { String.valueOf(taskId) });
+    }
+
+    /** Cập nhật ngày của task */
+    public void updateTaskDate(int taskId, String dateTag, long dueDateMillis) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COL_TASK_DATE_TAG, dateTag);
+        cv.put(COL_TASK_DUE_DATE, dueDateMillis);
+        db.update(TABLE_TASKS, cv, COL_TASK_ID + " = ?", new String[] { String.valueOf(taskId) });
+    }
+
+    /** Di chuyển task sang một danh sách khác */
+    public void moveTaskToList(int taskId, int newListId) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COL_TASK_LIST_ID, newListId);
         db.update(TABLE_TASKS, cv, COL_TASK_ID + " = ?", new String[] { String.valueOf(taskId) });
     }
 
@@ -554,6 +590,28 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         }
         cursor.close();
         return pinnedLists;
+    }
+
+    /** Lấy danh sách các List hợp lệ (ID >= 4) cho chức năng Move To */
+    public List<ListModel> getMoveToOptions() {
+        List<ListModel> lists = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+
+        // Chỉ lấy Hộp thư đến (ID=4) và các Custom Lists (ID>4)
+        Cursor cursor = db.query(TABLE_LISTS,
+                new String[] { COL_LIST_ID, COL_LIST_NAME, COL_LIST_ICON },
+                COL_LIST_ID + " >= 4",
+                null, null, null, COL_LIST_ORDER + " ASC, " + COL_LIST_ID + " ASC");
+
+        while (cursor.moveToNext()) {
+            lists.add(new ListModel(
+                    cursor.getInt(0), // ID
+                    cursor.getString(1), // Name
+                    cursor.getString(2) // Icon
+            ));
+        }
+        cursor.close();
+        return lists;
     }
 
     public int getListIconResId(Context context, int listId) {

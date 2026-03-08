@@ -28,6 +28,14 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         void onTaskClick(TaskModel task);
 
         void onTaskCheckedChanged(TaskModel task, boolean isChecked);
+
+        void onTaskPinClicked(TaskModel task);
+
+        void onTaskDeleteClicked(TaskModel task);
+
+        void onTaskMoveClicked(TaskModel task);
+
+        void onTaskDateClicked(TaskModel task);
     }
 
     public TaskAdapter(List<TaskListItem> items) {
@@ -65,11 +73,6 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         } else if (holder instanceof TaskViewHolder) {
             TaskModel task = (TaskModel) items.get(position);
             ((TaskViewHolder) holder).bind(task, listener);
-            holder.itemView.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onTaskClick(task);
-                }
-            });
         }
     }
 
@@ -78,7 +81,7 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return items.size();
     }
 
-    static class HeaderViewHolder extends RecyclerView.ViewHolder {
+    public static class HeaderViewHolder extends RecyclerView.ViewHolder {
         private final TextView title, count;
         private final ImageView iconExpand;
         private final View container;
@@ -113,19 +116,40 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
     }
 
-    static class TaskViewHolder extends RecyclerView.ViewHolder {
+    public static class TaskViewHolder extends RecyclerView.ViewHolder {
         private final CheckBox checkbox;
         private final TextView title;
         private final TextView dateTag;
+        public final View foreground;
+        private final View btnComplete;
+        private final View btnPin;
+        private final View btnMove;
+        private final View btnDelete;
+        private final View btnDate;
+        private int taskId = -1;
 
         TaskViewHolder(@NonNull View itemView) {
             super(itemView);
+            foreground = itemView.findViewById(R.id.task_foreground);
             checkbox = itemView.findViewById(R.id.task_checkbox);
             title = itemView.findViewById(R.id.task_title);
             dateTag = itemView.findViewById(R.id.task_date_tag);
+            btnComplete = itemView.findViewById(R.id.btn_complete);
+            btnPin = itemView.findViewById(R.id.btn_pin);
+            btnMove = itemView.findViewById(R.id.btn_move);
+            btnDelete = itemView.findViewById(R.id.btn_delete);
+            btnDate = itemView.findViewById(R.id.btn_date);
+        }
+
+        public int getTaskId() {
+            return taskId;
         }
 
         void bind(TaskModel task, OnTaskClickListener listener) {
+            this.taskId = task.getId();
+            // Reset translation in case view is reused from a swiped state
+            foreground.setTranslationX(0f);
+
             title.setText(task.getTitle());
             dateTag.setText(task.getDateTag());
             checkbox.setChecked(task.isCompleted());
@@ -133,14 +157,59 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             // Strikethrough effect when completed
             updateStrikethrough(task.isCompleted());
 
-            // Using setOnClickListener to only trigger on manual clicks, bypassing
-            // RecyclerView recycling
+            // Item clicks should be bounded to the foreground view, not the whole itemView
+            // (since itemView also includes the hidden background buttons)
+            foreground.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onTaskClick(task);
+                }
+            });
+
+            // Checkbox manual click
             checkbox.setOnClickListener(v -> {
                 boolean isChecked = checkbox.isChecked();
                 task.setCompleted(isChecked);
                 updateStrikethrough(isChecked);
                 if (listener != null) {
                     listener.onTaskCheckedChanged(task, isChecked);
+                }
+            });
+
+            // Swipe Actions
+            btnComplete.setOnClickListener(v -> {
+                foreground.animate().translationX(0f).setDuration(200).start();
+                task.setCompleted(true);
+                updateStrikethrough(true);
+                if (listener != null) {
+                    listener.onTaskCheckedChanged(task, true);
+                }
+            });
+
+            btnPin.setOnClickListener(v -> {
+                foreground.animate().translationX(0f).setDuration(200).start();
+                if (listener != null) {
+                    listener.onTaskPinClicked(task);
+                }
+            });
+
+            btnMove.setOnClickListener(v -> {
+                foreground.animate().translationX(0f).setDuration(200).start();
+                if (listener != null) {
+                    listener.onTaskMoveClicked(task);
+                }
+            });
+
+            btnDelete.setOnClickListener(v -> {
+                foreground.animate().translationX(0f).setDuration(200).start();
+                if (listener != null) {
+                    listener.onTaskDeleteClicked(task);
+                }
+            });
+
+            btnDate.setOnClickListener(v -> {
+                foreground.animate().translationX(0f).setDuration(200).start();
+                if (listener != null) {
+                    listener.onTaskDateClicked(task);
                 }
             });
         }
