@@ -572,10 +572,9 @@ public class MainActivity extends AppCompatActivity {
 
         pinnedItems = dbHelper.getPinnedLists();
         pinnedAdapter = new PinnedListAdapter(pinnedItems, item -> {
-            int listId = dbHelper.getListIdByName(item.getTitle());
+            int listId = item.getId();
             if (listId != -1) {
                 // Determine iconResId vs emoji
-                // For simplicity, re-fetch or use item properties directly
                 int resId = dbHelper.getListIconResId(this, listId);
                 loadTasksForList(listId, resId, item.getEmojiIcon());
             }
@@ -597,7 +596,7 @@ public class MainActivity extends AppCompatActivity {
 
                 drawerAdapter.setSelectedPosition(position);
 
-                int listId = dbHelper.getListIdByName(item.getTitle());
+                int listId = item.getId();
                 if (listId != -1) {
                     loadTasksForList(listId, item.getIconResId(), item.getEmojiIcon()); // Truyền thêm emoji
                 }
@@ -701,39 +700,36 @@ public class MainActivity extends AppCompatActivity {
         List<DrawerMenuItem> items = new ArrayList<>();
 
         // Navigation items
-        items.add(new DrawerMenuItem(
+        items.add(new DrawerMenuItem(1,
                 "Hôm nay", R.drawable.ic_today,
                 DrawerMenuItem.ItemType.NAVIGATION).setSelected(true));
 
-        items.add(new DrawerMenuItem(
+        items.add(new DrawerMenuItem(2,
                 "Ngày mai", R.drawable.ic_quick_tomorrow,
                 DrawerMenuItem.ItemType.NAVIGATION));
 
-        items.add(new DrawerMenuItem(
+        items.add(new DrawerMenuItem(3,
                 "7 ngày tới", R.drawable.ic_quick_next_week,
                 DrawerMenuItem.ItemType.NAVIGATION));
 
-        items.add(new DrawerMenuItem(
+        items.add(new DrawerMenuItem(4,
                 "Hộp thư đến", R.drawable.ic_inbox,
                 DrawerMenuItem.ItemType.NAVIGATION));
 
         // Separator
         items.add(DrawerMenuItem.separator());
 
-        // Lấy tất cả danh sách (list_id > 2) từ SQLite
-        Map<String, String> customLists = dbHelper.getAllCustomLists();
-        for (Map.Entry<String, String> entry : customLists.entrySet()) {
-            String listName = entry.getKey();
-            String iconName = entry.getValue();
+        // Lấy tất cả danh sách (list_id > 4) từ SQLite
+        List<DrawerMenuItem> customLists = dbHelper.getAllCustomLists();
+        for (DrawerMenuItem customItem : customLists) {
+            String iconName = customItem.getEmojiIcon(); // Trong getAllCustomLists mình set emojiIcon cho icon_name
 
-            // Phân biệt Icon Drawable và Emoji Text
             if (iconName != null && iconName.startsWith("ic_")) {
                 int resId = getResources().getIdentifier(iconName, "drawable", getPackageName());
-                items.add(new DrawerMenuItem(listName, resId, DrawerMenuItem.ItemType.LIST));
-            } else {
-                // iconName có thể là null (List không icon) hoặc emoji
-                items.add(new DrawerMenuItem(listName, iconName, DrawerMenuItem.ItemType.LIST));
+                customItem.setIconResId(resId);
+                customItem.setEmojiIcon(null);
             }
+            items.add(customItem);
         }
 
         items.add(DrawerMenuItem.separator());
@@ -742,8 +738,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void addNewListToDrawer(String name, String emojiIcon) {
-        // Lưu vào DB
-        dbHelper.insertList(name, emojiIcon);
+        // Load lại DrawerItems để cập nhật ID mới nhất từ DB
 
         // Load lại Custom Lists
         drawerItems.clear();
@@ -769,6 +764,14 @@ public class MainActivity extends AppCompatActivity {
         if (item.isSelected()) {
             updateToolbarForList(newName, item.getIconResId(), newEmojiIcon);
         }
+
+        // Đồng bộ danh sách ghim
+        if (pinnedItems != null && pinnedAdapter != null) {
+            pinnedItems.clear();
+            pinnedItems.addAll(dbHelper.getPinnedLists());
+            pinnedAdapter.notifyDataSetChanged();
+            updatePinnedVisibility();
+        }
     }
 
     public void deleteListFromDrawer(int listId, int position) {
@@ -787,6 +790,14 @@ public class MainActivity extends AppCompatActivity {
             drawerAdapter.setSelectedPosition(0);
             loadTasksForList(1, todayItem.getIconResId(), todayItem.getEmojiIcon());
         }
+
+        // Đồng bộ danh sách ghim
+        if (pinnedItems != null && pinnedAdapter != null) {
+            pinnedItems.clear();
+            pinnedItems.addAll(dbHelper.getPinnedLists());
+            pinnedAdapter.notifyDataSetChanged();
+            updatePinnedVisibility();
+        }
     }
 
     /**
@@ -801,7 +812,7 @@ public class MainActivity extends AppCompatActivity {
             if (item.getType() == DrawerMenuItem.ItemType.SEPARATOR)
                 continue;
 
-            int listId = dbHelper.getListIdByName(item.getTitle());
+            int listId = item.getId();
             if (listId != -1 && counts.containsKey(listId)) {
                 item.setBadgeCount(counts.get(listId));
             } else {
@@ -1147,7 +1158,7 @@ public class MainActivity extends AppCompatActivity {
         // Bắt sự kiện click các nút chức năng
         popupView.findViewById(R.id.popup_action_edit).setOnClickListener(v -> {
             popupWindow.dismiss();
-            int listId = dbHelper.getListIdByName(item.getTitle());
+            int listId = item.getId();
             if (listId != -1) {
                 hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.AddListDialogFragment dialog = hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.AddListDialogFragment
                         .newInstanceForEdit(listId, item.getTitle(), item.getEmojiIcon(), position);
@@ -1155,7 +1166,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        int listId = dbHelper.getListIdByName(item.getTitle());
+        int listId = item.getId();
 
         // Cập nhật text hiển thị dựa theo trạng thái Pin hiện tại
         TextView pinActionText = popupView.findViewById(R.id.popup_action_pin).findViewById(R.id.text_pin_action);

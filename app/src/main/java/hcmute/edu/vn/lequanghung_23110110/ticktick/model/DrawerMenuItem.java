@@ -10,6 +10,7 @@ public class DrawerMenuItem {
         SEPARATOR // Đường kẻ phân cách
     }
 
+    private int id; // ID từ Database (vd: list_id)
     private String title;
     private int iconResId; // Dành cho Vector/Drawable
     private String emojiIcon; // Dành cho Emoji dạng text (ưu tiên nếu khác null)
@@ -19,7 +20,8 @@ public class DrawerMenuItem {
     private boolean selected;
 
     // Constructor cho item bình thường
-    public DrawerMenuItem(String title, int iconResId, ItemType type) {
+    public DrawerMenuItem(int id, String title, int iconResId, ItemType type) {
+        this.id = id;
         this.title = title;
         this.iconResId = iconResId;
         this.type = type;
@@ -27,7 +29,8 @@ public class DrawerMenuItem {
     }
 
     // Constructor mới: cho emoji icon (dạng text)
-    public DrawerMenuItem(String title, String emojiIcon, ItemType type) {
+    public DrawerMenuItem(int id, String title, String emojiIcon, ItemType type) {
+        this.id = id;
         this.title = title;
         this.emojiIcon = emojiIcon;
         this.type = type;
@@ -36,11 +39,19 @@ public class DrawerMenuItem {
 
     // Constructor cho separator
     public static DrawerMenuItem separator() {
-        DrawerMenuItem item = new DrawerMenuItem("", 0, ItemType.SEPARATOR);
+        DrawerMenuItem item = new DrawerMenuItem(-1, "", 0, ItemType.SEPARATOR);
         return item;
     }
 
     // --- Getters & Setters ---
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
 
     public String getTitle() {
         return title;
@@ -52,6 +63,10 @@ public class DrawerMenuItem {
 
     public int getIconResId() {
         return iconResId;
+    }
+
+    public void setIconResId(int iconResId) {
+        this.iconResId = iconResId;
     }
 
     public String getEmojiIcon() {

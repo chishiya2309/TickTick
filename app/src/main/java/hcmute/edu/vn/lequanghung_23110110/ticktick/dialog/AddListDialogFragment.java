@@ -10,6 +10,8 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
@@ -108,11 +110,13 @@ public class AddListDialogFragment extends DialogFragment {
 
             if (getActivity() instanceof hcmute.edu.vn.lequanghung_23110110.ticktick.activity.MainActivity) {
                 hcmute.edu.vn.lequanghung_23110110.ticktick.activity.MainActivity mainActivity = (hcmute.edu.vn.lequanghung_23110110.ticktick.activity.MainActivity) getActivity();
+                TaskDatabaseHelper dbHelper = TaskDatabaseHelper.getInstance(getContext());
 
                 if (finalEditListId != -1) {
                     mainActivity.updateListInDrawer(finalEditListId, name, emoji, finalEditPosition);
                     Toast.makeText(getContext(), "Đã cập nhật: " + name, Toast.LENGTH_SHORT).show();
                 } else {
+                    dbHelper.insertList(name, emoji);
                     mainActivity.addNewListToDrawer(name, emoji);
                     Toast.makeText(getContext(), "Đã tạo: " + name, Toast.LENGTH_SHORT).show();
                 }

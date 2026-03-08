@@ -110,10 +110,9 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
                 listIcon.setVisibility(View.VISIBLE);
                 listEmoji.setVisibility(View.GONE);
             } else {
-                Map<String, String> customLists = dbHelper.getAllCustomLists();
-                String iconNameOrEmoji = customLists.get(listName);
-                if (iconNameOrEmoji != null && !iconNameOrEmoji.startsWith("ic_")) {
-                    listEmoji.setText(iconNameOrEmoji);
+                String emoji = dbHelper.getListEmojiById(task.getListId());
+                if (emoji != null && !emoji.isEmpty()) {
+                    listEmoji.setText(emoji);
                     listEmoji.setVisibility(View.VISIBLE);
                     listIcon.setVisibility(View.GONE);
                 }

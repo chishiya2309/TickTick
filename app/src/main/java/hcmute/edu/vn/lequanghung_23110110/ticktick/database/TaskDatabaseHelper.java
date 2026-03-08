@@ -420,13 +420,13 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     }
 
     /** Thêm danh sách mới (Custom List) */
-    public void insertList(String name, String iconName) {
+    public long insertList(String name, String iconName) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put(COL_LIST_NAME, name);
         cv.put(COL_LIST_ICON, iconName);
         cv.put(COL_LIST_ORDER, 0); // Đặt Item này lên đầu danh sách Custom
-        db.insert(TABLE_LISTS, null, cv);
+        return db.insert(TABLE_LISTS, null, cv);
     }
 
     /** Cập nhật danh sách (Custom List) */
@@ -548,6 +548,20 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         return name;
     }
 
+    /** Lấy emoji của danh sách theo list_id */
+    public String getListEmojiById(int listId) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(TABLE_LISTS, new String[] { COL_LIST_ICON },
+                COL_LIST_ID + " = ?", new String[] { String.valueOf(listId) },
+                null, null, null);
+        String emoji = "";
+        if (cursor.moveToFirst()) {
+            emoji = cursor.getString(0);
+        }
+        cursor.close();
+        return emoji;
+    }
+
     /** Đổi trạng thái ghim của danh sách */
     public void togglePinList(int listId, boolean isPinned) {
         SQLiteDatabase db = getWritableDatabase();
@@ -574,18 +588,19 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     public List<DrawerMenuItem> getPinnedLists() {
         List<DrawerMenuItem> pinnedLists = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
-        Cursor cursor = db.query(TABLE_LISTS, new String[] { COL_LIST_NAME, COL_LIST_ICON },
+        Cursor cursor = db.query(TABLE_LISTS, new String[] { COL_LIST_ID, COL_LIST_NAME, COL_LIST_ICON },
                 COL_LIST_IS_PINNED + " = 1", null, null, null, COL_LIST_ORDER + " ASC, " + COL_LIST_ID + " ASC");
 
         while (cursor.moveToNext()) {
-            String listName = cursor.getString(0);
-            String iconName = cursor.getString(1);
+            int id = cursor.getInt(0);
+            String listName = cursor.getString(1);
+            String iconName = cursor.getString(2);
 
             if (iconName != null && iconName.startsWith("ic_")) {
-                int resId = 0; // MainActivity sẽ resolve logic này, tạm bỏ nếu chưa cần
-                pinnedLists.add(new DrawerMenuItem(listName, resId, DrawerMenuItem.ItemType.LIST));
+                int resId = 0; // MainActivity sẽ resolve logic này
+                pinnedLists.add(new DrawerMenuItem(id, listName, resId, DrawerMenuItem.ItemType.LIST));
             } else {
-                pinnedLists.add(new DrawerMenuItem(listName, iconName, DrawerMenuItem.ItemType.LIST));
+                pinnedLists.add(new DrawerMenuItem(id, listName, iconName, DrawerMenuItem.ItemType.LIST));
             }
         }
         cursor.close();
@@ -633,16 +648,23 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
      * Lấy danh sách icon name cho các list (dùng để load DrawerItems động) -> trả
      * về Map<Name, IconName>
      */
-    public Map<String, String> getAllCustomLists() {
-        Map<String, String> lists = new java.util.LinkedHashMap<>();
+    public List<DrawerMenuItem> getAllCustomLists() {
+        List<DrawerMenuItem> lists = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
-        // Skip list_id 1 đến 4 ("Hôm nay", "Ngày mai", "7 ngày tới", "Hộp thư đến") vì
-        // đó thuộc Navigation items mặc định
-        Cursor cursor = db.query(TABLE_LISTS, new String[] { COL_LIST_NAME, COL_LIST_ICON },
+        // Skip list_id 1 đến 4 ("Hôm nay", "Ngày mai", "7 ngày tới", "Hộp thư đến")
+        Cursor cursor = db.query(TABLE_LISTS, new String[] { COL_LIST_ID, COL_LIST_NAME, COL_LIST_ICON },
                 COL_LIST_ID + " > 4", null, null, null, COL_LIST_ORDER + " ASC, " + COL_LIST_ID + " ASC");
 
         while (cursor.moveToNext()) {
-            lists.put(cursor.getString(0), cursor.getString(1));
+            int id = cursor.getInt(0);
+            String listName = cursor.getString(1);
+            String iconName = cursor.getString(2);
+
+            if (iconName != null && iconName.startsWith("ic_")) {
+                lists.add(new DrawerMenuItem(id, listName, 0, DrawerMenuItem.ItemType.LIST));
+            } else {
+                lists.add(new DrawerMenuItem(id, listName, iconName, DrawerMenuItem.ItemType.LIST));
+            }
         }
         cursor.close();
         return lists;

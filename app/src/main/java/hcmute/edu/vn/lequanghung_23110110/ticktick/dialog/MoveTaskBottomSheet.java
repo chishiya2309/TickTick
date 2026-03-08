@@ -16,10 +16,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.List;
 
 import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.activity.MainActivity;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.MoveTaskListAdapter;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.ListModel;
@@ -121,8 +123,42 @@ public class MoveTaskBottomSheet extends BottomSheetDialogFragment {
 
         // Add List Button
         view.findViewById(R.id.btn_add_list).setOnClickListener(v -> {
-            dismiss();
-            Toast.makeText(getContext(), "Vui lòng thêm danh sách ở menu chính", Toast.LENGTH_SHORT).show();
+            View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.layout_quick_add_list, null);
+            EditText etName = dialogView.findViewById(R.id.et_quick_add_list_name);
+
+            new MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Thêm Danh sách")
+                    .setView(dialogView)
+                    .setPositiveButton("OK", (dialog, which) -> {
+                        String name = etName.getText().toString().trim();
+                        if (!name.isEmpty()) {
+                            // Pick a random emoji to mimic typical list creation behavior
+                            String[] emojis = { "🚀", "⭐", "🎉", "🔥", "💡", "🎯", "🍀", "💎", "🌟", "📚", "🎨", "🎵",
+                                    "🏆", "🍕", "🍔" };
+                            String randomEmoji = emojis[new java.util.Random().nextInt(emojis.length)];
+
+                            // 1. Save to Database
+                            long newListId = dbHelper.insertList(name, randomEmoji);
+
+                            // 2. Update MainActivity Drawer
+                            if (getActivity() instanceof MainActivity) {
+                                ((MainActivity) getActivity()).addNewListToDrawer(name, randomEmoji);
+                            }
+
+                            // 3. Move the task immediately
+                            dbHelper.moveTaskToList(taskId, (int) newListId);
+
+                            // 4. Trigger Toast and close bottom sheet
+                            if (listener != null) {
+                                listener.onTaskMoved((int) newListId, name, randomEmoji);
+                            }
+                            dismiss();
+                        } else {
+                            Toast.makeText(getContext(), "Tên không được để trống", Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .setNegativeButton("Hủy bỏ", null)
+                    .show();
         });
     }
 }
