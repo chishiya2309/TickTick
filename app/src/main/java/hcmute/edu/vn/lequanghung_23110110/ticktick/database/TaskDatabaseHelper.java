@@ -202,8 +202,32 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1);
             tasks.add(task);
         }
-        cursor.close();
+    cursor.close();
         return tasks;
+    }
+
+    /** Lấy một task theo task_id */
+    public TaskModel getTaskById(int taskId) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(TABLE_TASKS, null,
+                COL_TASK_ID + " = ?",
+                new String[] { String.valueOf(taskId) },
+                null, null, null);
+
+        TaskModel task = null;
+        if (cursor.moveToFirst()) {
+            task = new TaskModel(
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DESCRIPTION)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1);
+        }
+        cursor.close();
+        return task;
     }
 
     /** Lấy tất cả tasks của ngày mai (không có quá hạn) */
@@ -668,5 +692,31 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         }
         cursor.close();
         return lists;
+    }
+
+    // Thêm vào TaskDatabaseHelper.java
+    public List<TaskModel> getUpcomingTasks() {
+        List<TaskModel> tasks = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        long now = System.currentTimeMillis();
+
+        // Lấy các task chưa hoàn thành và có ngày đến hạn trong tương lai
+        String selection = COL_TASK_COMPLETED + " = 0 AND " + COL_TASK_DUE_DATE + " > ?";
+        String[] selectionArgs = { String.valueOf(now) };
+
+        Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null, null);
+        while (cursor.moveToNext()) {
+            tasks.add(new TaskModel(
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DESCRIPTION)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1));
+        }
+        cursor.close();
+        return tasks;
     }
 }

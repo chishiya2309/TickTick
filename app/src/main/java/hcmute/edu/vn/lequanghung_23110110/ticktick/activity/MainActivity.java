@@ -1,7 +1,12 @@
 package hcmute.edu.vn.lequanghung_23110110.ticktick.activity;
 
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.res.Resources;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -50,6 +55,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskHeader;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskListItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.service.ReminderService;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.TaskSwipeHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.PinnedListAdapter;
 import android.widget.ImageView;
@@ -78,6 +84,9 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView pinnedRecyclerView;
     private PinnedListAdapter pinnedAdapter;
     private List<DrawerMenuItem> pinnedItems;
+
+    private ReminderService reminderService;
+    private boolean isBound = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -1222,6 +1231,56 @@ public class MainActivity extends AppCompatActivity {
             pinnedRecyclerView.setVisibility(View.VISIBLE);
         } else {
             pinnedRecyclerView.setVisibility(View.GONE);
+        }
+    }
+
+    private ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            ReminderService.LocalBinder binder = (ReminderService.LocalBinder) service;
+            reminderService = binder.getService();
+            isBound = true;
+            // Lên lịch lại toàn bộ khi kết nối
+            reminderService.scheduleAllReminders();
+        }
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            isBound = false;
+        }
+    };
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Intent intent = new Intent(this, ReminderService.class);
+        bindService(intent, connection, Context.BIND_AUTO_CREATE);
+    }
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (isBound) {
+            unbindService(connection);
+            isBound = false;
+        }
+    }
+    // Xử lý Intent từ Notification
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (getIntent().hasExtra("EXTRA_TASK_ID")) {
+            int taskId = getIntent().getIntExtra("EXTRA_TASK_ID", -1);
+            getIntent().removeExtra("EXTRA_TASK_ID"); // Xóa để không lặp lại
+            if (taskId != -1) {
+                showTaskDetailById(taskId);
+            }
+        }
+    }
+
+    private void showTaskDetailById(int taskId) {
+        // Logic để tìm TaskModel từ DB và mở TaskDetailBottomSheet
+        TaskModel task = dbHelper.getTaskById(taskId); // Bạn cần viết thêm hàm này trong DB Helper
+        if (task != null) {
+            TaskDetailBottomSheet bottomSheet = new TaskDetailBottomSheet(task);
+            bottomSheet.show(getSupportFragmentManager(), "TaskDetailBottomSheet");
         }
     }
 }
