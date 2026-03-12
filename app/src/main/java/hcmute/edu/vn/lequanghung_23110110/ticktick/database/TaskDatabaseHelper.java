@@ -515,6 +515,14 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         db.update(TABLE_TASKS, cv, COL_TASK_ID + " = ?", new String[] { String.valueOf(taskId) });
     }
 
+    /** Cập nhật thời gian nhắc nhở của Task */
+    public void updateTaskDueDate(int taskId, long newDueDateMillis) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COL_TASK_DUE_DATE, newDueDateMillis);
+        db.update(TABLE_TASKS, cv, COL_TASK_ID + " = ?", new String[] { String.valueOf(taskId) });
+    }
+
     /** Di chuyển task sang một danh sách khác */
     public void moveTaskToList(int taskId, int newListId) {
         SQLiteDatabase db = getWritableDatabase();

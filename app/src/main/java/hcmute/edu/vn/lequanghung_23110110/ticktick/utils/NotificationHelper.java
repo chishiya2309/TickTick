@@ -83,4 +83,18 @@ public class NotificationHelper {
             manager.notify(taskId + 1000, builder.build()); // Dùng ID khác để không đè thông báo thường
         }
     }
+
+    /**
+     * Tắt thông báo dựa trên Task ID
+     * @param context Context
+     * @param taskId ID của task
+     */
+    public static void cancelNotification(Context context, int taskId) {
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager != null) {
+            // Tắt cả thông báo thường và thông báo báo thức (được cộng thêm 1000 ở showAlarmNotification)
+            manager.cancel(taskId);
+            manager.cancel(taskId + 1000);
+        }
+    }
 }

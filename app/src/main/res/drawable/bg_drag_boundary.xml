@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <!-- Viền đứt nét trắng mờ làm ranh giới kéo -->
+    <stroke
+        android:width="2dp"
+        android:color="#4DFFFFFF"
+        android:dashWidth="10dp"
+        android:dashGap="5dp" />
+    <solid android:color="#1AFFFFFF" />
+    <size
+        android:width="160dp"
+        android:height="160dp" />
+</shape>

@@ -12,6 +12,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -72,6 +73,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.DailyBriefingScheduler;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "ALARM_DEBUG";
     private RecyclerView taskRecyclerView;
     private TaskAdapter taskAdapter;
     private List<TaskListItem> taskList;
@@ -139,7 +141,6 @@ public class MainActivity extends AppCompatActivity {
         DailyBriefingScheduler.setupDailyBriefingWork(this);
         loadTasksForList(currentListId);
 
-        // Kiểm tra quyền ngay khi app mở
         checkPermissions();
     }
 
@@ -638,6 +639,7 @@ public class MainActivity extends AppCompatActivity {
             public void onTaskClick(TaskModel task) {
                 TaskDetailBottomSheet bottomSheet = new TaskDetailBottomSheet(task);
                 bottomSheet.setOnTaskUpdatedListener(() -> {
+                    Log.d(TAG, "UI: TaskDetail updated, calling rescheduleReminders");
                     loadTasksForList(currentListId);
                     rescheduleReminders();
                 });
@@ -693,8 +695,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void rescheduleReminders() {
+        Log.d(TAG, "rescheduleReminders: isBound=" + isBound + ", reminderService=" + (reminderService != null));
         if (isBound && reminderService != null) {
             reminderService.scheduleAllReminders();
+        } else {
+            Intent intent = new Intent(this, ReminderService.class);
+            startService(intent);
         }
     }
 
@@ -773,7 +779,23 @@ public class MainActivity extends AppCompatActivity {
         sheetView.findViewById(R.id.btn_submit_task).setOnClickListener(v -> {
             String title = inputTitle.getText().toString().trim();
             if (TextUtils.isEmpty(title)) { inputTitle.setError("Nhập tiêu đề task"); inputTitle.requestFocus(); return; }
-            dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], selectedDateMillis[0]);
+            
+            // FIX: Gộp giờ phút vào Millis nếu có chọn thời gian
+            long finalDueDate = selectedDateMillis[0];
+            if (finalDueDate > 0 && selectedHour[0] >= 0) {
+                Calendar cal = Calendar.getInstance();
+                cal.setTimeInMillis(finalDueDate);
+                cal.set(Calendar.HOUR_OF_DAY, selectedHour[0]);
+                cal.set(Calendar.MINUTE, selectedMinute[0]);
+                cal.set(Calendar.SECOND, 0);
+                cal.set(Calendar.MILLISECOND, 0);
+                finalDueDate = cal.getTimeInMillis();
+            }
+
+            Log.d(TAG, "UI: Click Save. Title=" + title + ", FinalMillis=" + finalDueDate);
+            
+            dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate);
+            
             loadTasksForList(currentListId);
             rescheduleReminders();
             bottomSheet.dismiss();
@@ -870,6 +892,7 @@ public class MainActivity extends AppCompatActivity {
         @Override public void onServiceConnected(ComponentName name, IBinder service) {
             reminderService = ((ReminderService.LocalBinder) service).getService();
             isBound = true;
+            Log.d(TAG, "onServiceConnected: Service Connected");
             reminderService.scheduleAllReminders();
         }
         @Override public void onServiceDisconnected(ComponentName name) { isBound = false; }

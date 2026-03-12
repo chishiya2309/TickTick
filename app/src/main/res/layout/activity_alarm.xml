@@ -7,116 +7,127 @@
     android:background="@drawable/gradient_alarm_bg"
     android:keepScreenOn="true">
 
+    <!-- 1. Top Section: Giờ hiện tại và Tên Task -->
     <TextView
-        android:id="@+id/tvAppName"
+        android:id="@+id/tv_current_time"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="24dp"
-        android:layout_marginTop="24dp"
-        android:drawablePadding="8dp"
-        android:text="TickTick"
+        android:layout_marginTop="80dp"
+        android:fontFamily="sans-serif-thin"
+        android:text="08:00"
         android:textColor="@android:color/white"
-        android:textSize="16sp"
+        android:textSize="80sp"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="08:00" />
 
     <TextView
-        android:id="@+id/tvTaskTitle"
+        android:id="@+id/tv_task_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="24dp"
-        android:layout_marginTop="120dp"
-        android:text="Task Title"
+        android:layout_marginHorizontal="40dp"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:text="Tên công việc"
         android:textColor="@android:color/white"
-        android:textSize="32sp"
+        android:textSize="28sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvAppName" />
+        app:layout_constraintTop_toBottomOf="@id/tv_current_time"
+        tools:text="Học lập trình Android" />
+
+    <!-- 2. Middle Section: Vòng tròn giới hạn (Joystick Boundary) -->
+    <FrameLayout
+        android:id="@+id/dragBoundary"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
+        android:background="@drawable/bg_drag_boundary"
+        app:layout_constraintBottom_toTopOf="@+id/layoutSnoozeControls"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_task_title">
+
+        <!-- Nút Dismiss (Joystick) -->
+        <FrameLayout
+            android:id="@+id/btnDismiss"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_circle_dismiss_joystick"
+            android:elevation="6dp">
+
+            <ImageView
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check"
+                app:tint="#2C3E50" />
+        </FrameLayout>
+
+    </FrameLayout>
 
     <TextView
-        android:id="@+id/tvTaskTime"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Today 10:56 AM"
-        android:textColor="@android:color/white"
-        android:textSize="18sp"
-        app:layout_constraintEnd_toEndOf="@id/tvTaskTitle"
-        app:layout_constraintStart_toStartOf="@id/tvTaskTitle"
-        app:layout_constraintTop_toBottomOf="@id/tvTaskTitle" />
-
-    <TextView
-        android:id="@+id/tvStartsIn"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="Starts in 10 minutes"
-        android:textColor="#B3FFFFFF"
-        android:textSize="16sp"
-        app:layout_constraintEnd_toEndOf="@id/tvTaskTitle"
-        app:layout_constraintStart_toStartOf="@id/tvTaskTitle"
-        app:layout_constraintTop_toBottomOf="@id/tvTaskTime" />
-
-    <LinearLayout
-        android:id="@+id/layoutSnooze"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="150dp"
+        android:layout_marginTop="16dp"
+        android:text="Kéo ra ngoài vòng tròn để tắt"
+        android:textColor="#80FFFFFF"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/dragBoundary" />
+
+    <!-- 3. Bottom Section: Snooze Controls -->
+    <LinearLayout
+        android:id="@+id/layoutSnoozeControls"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="50dp"
         android:gravity="center"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <ImageButton
+        <TextView
             android:id="@+id/btnSnoozeMinus"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="@drawable/bg_circle_button"
-            android:src="@android:drawable/ic_input_delete"
-            app:tint="@android:color/white" />
+            android:gravity="center"
+            android:text="—"
+            android:textColor="@android:color/white"
+            android:textSize="24sp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true" />
 
         <Button
             android:id="@+id/btnSnooze"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_marginHorizontal="16dp"
-            android:backgroundTint="#1AFFFFFF"
+            android:background="@drawable/bg_snooze_button"
+            android:minWidth="160dp"
             android:paddingHorizontal="24dp"
-            android:text="Snooze 10 mins"
+            android:text="Tạm dừng 10 phút"
             android:textAllCaps="false"
             android:textColor="@android:color/white"
-            app:cornerRadius="24dp" />
+            android:textSize="16sp" />
 
-        <ImageButton
+        <TextView
             android:id="@+id/btnSnoozePlus"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="@drawable/bg_circle_button"
-            android:src="@android:drawable/ic_input_add"
-            app:tint="@android:color/white" />
+            android:gravity="center"
+            android:text="+"
+            android:textColor="@android:color/white"
+            android:textSize="24sp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true" />
 
     </LinearLayout>
-
-    <FrameLayout
-        android:id="@+id/btnDismiss"
-        android:layout_width="120dp"
-        android:layout_height="120dp"
-        android:layout_marginBottom="40dp"
-        android:background="@drawable/bg_circle_dismiss"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="Dismiss"
-            android:textColor="@android:color/white"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-    </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

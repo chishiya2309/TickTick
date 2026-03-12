@@ -1,9 +1,9 @@
 package hcmute.edu.vn.lequanghung_23110110.ticktick.activity;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
+import android.animation.ObjectAnimator;
+import android.animation.PropertyValuesHolder;
+import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
@@ -12,9 +12,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -26,7 +28,8 @@ import java.util.Locale;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
-import hcmute.edu.vn.lequanghung_23110110.ticktick.service.AlarmReceiver;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.service.ReminderService;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.NotificationHelper;
 
 public class AlarmActivity extends AppCompatActivity {
 
@@ -34,14 +37,160 @@ public class AlarmActivity extends AppCompatActivity {
     private Vibrator vibrator;
     private int taskId;
     private String taskTitle;
-    private int snoozeMinutes = 5;
+    private int snoozeMinutes = 10;
+
+    private TextView tvCurrentTime, tvTaskTitle;
+    private FrameLayout btnDismiss, dragBoundary;
     private Button btnSnooze;
+    private ObjectAnimator pulseAnim;
+
+    private float startTouchX, startTouchY;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Cấu hình Window để hiển thị trên màn hình khóa
+        // Hiển thị trên màn hình khóa
+        setupLockScreenWindow();
+
+        setContentView(R.layout.activity_alarm);
+
+        initViews();
+
+        // Lấy dữ liệu Task
+        taskId = getIntent().getIntExtra("TASK_ID", -1);
+        taskTitle = getIntent().getStringExtra("TASK_TITLE");
+
+        setupData();
+        startAlarm();
+        setupPulseAnimation();
+        setupJoystickLogic();
+        setupSnoozeLogic();
+    }
+
+    private void initViews() {
+        tvCurrentTime = findViewById(R.id.tv_current_time);
+        tvTaskTitle = findViewById(R.id.tv_task_title);
+        btnDismiss = findViewById(R.id.btnDismiss);
+        dragBoundary = findViewById(R.id.dragBoundary);
+        btnSnooze = findViewById(R.id.btnSnooze);
+    }
+
+    private void setupData() {
+        tvTaskTitle.setText(taskTitle != null ? taskTitle : "Công việc");
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        tvCurrentTime.setText(sdf.format(new Date()));
+    }
+
+    /**
+     * Hiệu ứng Pulse (Mạch đập) cho nút Dismiss
+     */
+    private void setupPulseAnimation() {
+        pulseAnim = ObjectAnimator.ofPropertyValuesHolder(
+                btnDismiss,
+                PropertyValuesHolder.ofFloat("scaleX", 1.0f, 1.15f),
+                PropertyValuesHolder.ofFloat("scaleY", 1.0f, 1.15f)
+        );
+        pulseAnim.setDuration(800);
+        pulseAnim.setRepeatCount(ObjectAnimator.INFINITE);
+        pulseAnim.setRepeatMode(ObjectAnimator.REVERSE);
+        pulseAnim.start();
+    }
+
+    /**
+     * Logic kéo Joystick cho nút Dismiss
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private void setupJoystickLogic() {
+        btnDismiss.setOnTouchListener((v, event) -> {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    // Dừng hiệu ứng Pulse khi bắt đầu chạm
+                    if (pulseAnim != null) pulseAnim.cancel();
+                    v.setScaleX(1f);
+                    v.setScaleY(1f);
+
+                    startTouchX = event.getRawX();
+                    startTouchY = event.getRawY();
+                    return true;
+
+                case MotionEvent.ACTION_MOVE:
+                    float dx = event.getRawX() - startTouchX;
+                    float dy = event.getRawY() - startTouchY;
+
+                    // Tính khoảng cách từ tâm bằng định lý Pytago: distance = sqrt(dx^2 + dy^2)
+                    float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+                    // Bán kính tối đa cho phép di chuyển (Bán kính vòng ngoài - Bán kính nút)
+                    float maxRadius = (dragBoundary.getWidth() / 2f) - (v.getWidth() / 2f);
+
+                    if (distance > maxRadius) {
+                        // Chặn (Clamp) nút lại ở biên vòng tròn
+                        float ratio = maxRadius / distance;
+                        v.setTranslationX(dx * ratio);
+                        v.setTranslationY(dy * ratio);
+                    } else {
+                        v.setTranslationX(dx);
+                        v.setTranslationY(dy);
+                    }
+                    return true;
+
+                case MotionEvent.ACTION_UP:
+                    float finalDx = v.getTranslationX();
+                    float finalDy = v.getTranslationY();
+                    float finalDistance = (float) Math.sqrt(finalDx * finalDx + finalDy * finalDy);
+                    float limitRadius = (dragBoundary.getWidth() / 2f) - (v.getWidth() / 2f);
+
+                    // Nếu kéo đủ xa (trên 80% bán kính) -> Dismiss
+                    if (finalDistance >= limitRadius * 0.8f) {
+                        performDismiss();
+                    } else {
+                        // Nếu chưa đủ xa -> Nảy về tâm và bật lại hiệu ứng Pulse
+                        v.animate()
+                                .translationX(0)
+                                .translationY(0)
+                                .setDuration(250)
+                                .withEndAction(() -> {
+                                    if (pulseAnim != null) pulseAnim.start();
+                                })
+                                .start();
+                    }
+                    return true;
+            }
+            return false;
+        });
+    }
+
+    private void performDismiss() {
+        NotificationHelper.cancelNotification(this, taskId);
+        stopAlarm();
+        finish();
+    }
+
+    private void setupSnoozeLogic() {
+        btnSnooze.setOnClickListener(v -> {
+            NotificationHelper.cancelNotification(this, taskId);
+            long newDueDateMillis = System.currentTimeMillis() + ((long) snoozeMinutes * 60 * 1000);
+            TaskDatabaseHelper.getInstance(this).updateTaskDueDate(taskId, newDueDateMillis);
+            ReminderService.scheduleStrictAlarm(this, taskId, taskTitle, newDueDateMillis);
+            stopAlarm();
+            finish();
+        });
+
+        findViewById(R.id.btnSnoozePlus).setOnClickListener(v -> {
+            snoozeMinutes += 5;
+            btnSnooze.setText("Tạm dừng " + snoozeMinutes + " phút");
+        });
+
+        findViewById(R.id.btnSnoozeMinus).setOnClickListener(v -> {
+            if (snoozeMinutes > 5) {
+                snoozeMinutes -= 5;
+                btnSnooze.setText("Tạm dừng " + snoozeMinutes + " phút");
+            }
+        });
+    }
+
+    private void setupLockScreenWindow() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
@@ -51,105 +200,12 @@ public class AlarmActivity extends AppCompatActivity {
                     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
                     WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
         }
-
-        setContentView(R.layout.activity_alarm);
-
-        taskId = getIntent().getIntExtra("TASK_ID", -1);
-        taskTitle = getIntent().getStringExtra("TASK_TITLE");
-
-        TextView tvTaskTitle = findViewById(R.id.tvTaskTitle);
-        TextView tvCurrentTime = findViewById(R.id.tvTaskTime);
-        TextView tvStartsIn = findViewById(R.id.tvStartsIn);
-        btnSnooze = findViewById(R.id.btnSnooze);
-
-        if (tvTaskTitle != null) {
-            tvTaskTitle.setText(taskTitle);
-        }
-
-        // Hiển thị thời gian hiện tại
-        if (tvCurrentTime != null) {
-            SimpleDateFormat sdf = new SimpleDateFormat("EEEE, h:mm a", Locale.getDefault());
-            tvCurrentTime.setText(sdf.format(new Date()));
-        }
-
-        // Tính toán "Starts in X minutes" nếu có thể
-        if (tvStartsIn != null) {
-            updateStartsIn(tvStartsIn);
-        }
-
-        startAlarm();
-
-        // Nút Dismiss (Hoàn thành)
-        View btnDismiss = findViewById(R.id.btnDismiss);
-        if (btnDismiss != null) {
-            btnDismiss.setOnClickListener(v -> {
-                stopAlarm();
-                TaskDatabaseHelper.getInstance(this).updateTaskCompleted(taskId, true);
-                finish();
-            });
-        }
-
-        // Nút Snooze (Báo lại)
-        if (btnSnooze != null) {
-            btnSnooze.setOnClickListener(v -> {
-                stopAlarm();
-                scheduleSnooze(snoozeMinutes);
-                finish();
-            });
-        }
-
-        // Nút Tăng thời gian Snooze
-        View btnSnoozePlus = findViewById(R.id.btnSnoozePlus);
-        if (btnSnoozePlus != null) {
-            btnSnoozePlus.setOnClickListener(v -> {
-                snoozeMinutes += 5;
-                updateSnoozeText();
-            });
-        }
-
-        // Nút Giảm thời gian Snooze
-        View btnSnoozeMinus = findViewById(R.id.btnSnoozeMinus);
-        if (btnSnoozeMinus != null) {
-            btnSnoozeMinus.setOnClickListener(v -> {
-                if (snoozeMinutes > 5) {
-                    snoozeMinutes -= 5;
-                    updateSnoozeText();
-                }
-            });
-        }
-    }
-
-    private void updateStartsIn(TextView tvStartsIn) {
-        TaskModel task = TaskDatabaseHelper.getInstance(this).getTaskById(taskId);
-        if (task != null && task.getDueDateMillis() > 0) {
-            long diffMillis = task.getDueDateMillis() - System.currentTimeMillis();
-            if (diffMillis > 0) {
-                long minutes = diffMillis / (60 * 1000);
-                if (minutes > 0) {
-                    tvStartsIn.setText("Starts in " + minutes + " minutes");
-                } else {
-                    tvStartsIn.setText("Starting now");
-                }
-            } else {
-                tvStartsIn.setText("Task is due now");
-            }
-        } else {
-            tvStartsIn.setVisibility(View.GONE);
-        }
-    }
-
-    private void updateSnoozeText() {
-        if (btnSnooze != null) {
-            btnSnooze.setText("Snooze " + snoozeMinutes + " mins");
-        }
     }
 
     private void startAlarm() {
-        // Âm thanh báo thức
         Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-        if (alarmUri == null) {
-            alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
-        }
+        if (alarmUri == null) alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+
         ringtone = RingtoneManager.getRingtone(this, alarmUri);
         if (ringtone != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -161,7 +217,6 @@ public class AlarmActivity extends AppCompatActivity {
             ringtone.play();
         }
 
-        // Rung
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         if (vibrator != null && vibrator.hasVibrator()) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -173,37 +228,8 @@ public class AlarmActivity extends AppCompatActivity {
     }
 
     private void stopAlarm() {
-        if (ringtone != null && ringtone.isPlaying()) {
-            ringtone.stop();
-        }
-        if (vibrator != null) {
-            vibrator.cancel();
-        }
-    }
-
-    private void scheduleSnooze(int minutes) {
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        if (alarmManager == null) return;
-
-        Intent intent = new Intent(this, AlarmReceiver.class);
-        intent.putExtra("TASK_ID", taskId);
-        intent.putExtra("TASK_TITLE", taskTitle);
-
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, taskId, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-        long snoozeTime = System.currentTimeMillis() + (long) minutes * 60 * 1000;
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, snoozeTime, pendingIntent);
-            } else {
-                alarmManager.setExact(AlarmManager.RTC_WAKEUP, snoozeTime, pendingIntent);
-            }
-        } catch (SecurityException e) {
-            // Handle cases where SCHEDULE_EXACT_ALARM permission is not granted on Android 12+
-            alarmManager.set(AlarmManager.RTC_WAKEUP, snoozeTime, pendingIntent);
-        }
+        if (ringtone != null && ringtone.isPlaying()) ringtone.stop();
+        if (vibrator != null) vibrator.cancel();
     }
 
     @Override
