@@ -53,6 +53,18 @@
                     android:textColor="@color/main_text_primary"
                     android:textColorHint="@color/main_text_secondary"
                     android:textSize="16sp" />
+
+                <!-- Clear Button -->
+                <ImageView
+                    android:id="@+id/btn_clear_search"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginStart="8dp"
+                    android:src="@drawable/ic_close"
+                    app:tint="@color/main_text_secondary"
+                    android:visibility="gone"
+                    android:clickable="true"
+                    android:focusable="true"/>
             </LinearLayout>
 
             <!-- Cancel Button -->
@@ -85,7 +97,6 @@
                 android:orientation="vertical"
                 android:padding="24dp">
 
-                <!-- Placeholder for the user's SVG. We use ic_empty_tasks temporarily -->
                 <ImageView
                     android:id="@+id/search_empty_image"
                     android:layout_width="200dp"
@@ -110,15 +121,103 @@
                     android:textSize="14sp" />
             </LinearLayout>
 
-            <!-- Search Results RecyclerView -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/search_results_recycler_view"
+            <!-- Search Results ScrollView Container -->
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/search_results_container"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
                 android:paddingTop="8dp"
-                android:visibility="gone"
-                android:overScrollMode="never" />
+                android:paddingBottom="24dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="16dp">
+
+                    <!-- Tasks Section -->
+                    <LinearLayout
+                        android:id="@+id/search_tasks_section"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="12dp"
+                            android:text="Nhiệm vụ"
+                            android:textColor="@color/main_text_primary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_search_result_card"
+                            android:orientation="vertical"
+                            android:paddingVertical="4dp">
+
+                            <androidx.recyclerview.widget.RecyclerView
+                                android:id="@+id/search_tasks_recycler_view"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:nestedScrollingEnabled="false"
+                                android:overScrollMode="never" />
+
+                            <TextView
+                                android:id="@+id/search_tasks_see_more"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center"
+                                android:paddingVertical="12dp"
+                                android:text="Xem thêm"
+                                android:textColor="#3b82f6"
+                                android:textSize="14sp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:background="?android:attr/selectableItemBackground" />
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <!-- Lists Section -->
+                    <LinearLayout
+                        android:id="@+id/search_lists_section"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="24dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="12dp"
+                            android:text="Danh sách"
+                            android:textColor="@color/main_text_primary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_search_result_card"
+                            android:orientation="vertical"
+                            android:paddingVertical="4dp">
+
+                            <androidx.recyclerview.widget.RecyclerView
+                                android:id="@+id/search_lists_recycler_view"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:nestedScrollingEnabled="false"
+                                android:overScrollMode="never" />
+
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.core.widget.NestedScrollView>
 
         </FrameLayout>
     </LinearLayout>

@@ -744,4 +744,29 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         cursor.close();
         return tasks;
     }
+
+    public List<DrawerMenuItem> searchLists(String query) {
+        List<DrawerMenuItem> lists = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+
+        String selection = COL_LIST_NAME + " LIKE ?";
+        String[] selectionArgs = new String[] { "%" + query + "%" };
+
+        Cursor cursor = db.query(TABLE_LISTS, new String[] { COL_LIST_ID, COL_LIST_NAME, COL_LIST_ICON },
+                selection, selectionArgs, null, null, COL_LIST_ORDER + " ASC, " + COL_LIST_ID + " ASC");
+
+        while (cursor.moveToNext()) {
+            int id = cursor.getInt(0);
+            String listName = cursor.getString(1);
+            String iconName = cursor.getString(2);
+
+            if (iconName != null && iconName.startsWith("ic_")) {
+                lists.add(new DrawerMenuItem(id, listName, 0, DrawerMenuItem.ItemType.LIST));
+            } else {
+                lists.add(new DrawerMenuItem(id, listName, iconName, DrawerMenuItem.ItemType.LIST));
+            }
+        }
+        cursor.close();
+        return lists;
+    }
 }

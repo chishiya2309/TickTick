@@ -7,10 +7,11 @@ import android.text.TextWatcher;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -18,19 +19,32 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
-import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.TaskAdapter;
-import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskListItem;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.SearchListAdapter;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.SearchTaskAdapter;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 
 public class SearchActivity extends AppCompatActivity {
 
     private EditText searchInput;
+    private ImageView btnClearSearch;
     private View emptyStateContainer;
-    private RecyclerView searchResultsRecyclerView;
-    private TaskAdapter taskAdapter;
-    private ArrayList<TaskListItem> searchResults;
+    private View searchResultsContainer;
+    
+    private View tasksSection;
+    private RecyclerView tasksRecyclerView;
+    private TextView tvTasksSeeMore;
+    
+    private View listsSection;
+    private RecyclerView listsRecyclerView;
+
+    private SearchTaskAdapter searchTaskAdapter;
+    private SearchListAdapter searchListAdapter;
+    private TaskDatabaseHelper dbHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +58,8 @@ public class SearchActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        dbHelper = TaskDatabaseHelper.getInstance(this);
 
         setupViews();
         setupSearchLogic();
@@ -60,8 +76,16 @@ public class SearchActivity extends AppCompatActivity {
 
     private void setupViews() {
         searchInput = findViewById(R.id.search_input);
+        btnClearSearch = findViewById(R.id.btn_clear_search);
         emptyStateContainer = findViewById(R.id.search_empty_state_container);
-        searchResultsRecyclerView = findViewById(R.id.search_results_recycler_view);
+        searchResultsContainer = findViewById(R.id.search_results_container);
+
+        tasksSection = findViewById(R.id.search_tasks_section);
+        tasksRecyclerView = findViewById(R.id.search_tasks_recycler_view);
+        tvTasksSeeMore = findViewById(R.id.search_tasks_see_more);
+
+        listsSection = findViewById(R.id.search_lists_section);
+        listsRecyclerView = findViewById(R.id.search_lists_recycler_view);
 
         // Cancel button
         findViewById(R.id.btn_cancel_search).setOnClickListener(v -> {
@@ -73,42 +97,37 @@ public class SearchActivity extends AppCompatActivity {
             finish();
         });
 
-        searchResults = new ArrayList<>();
-        taskAdapter = new TaskAdapter(searchResults);
-        taskAdapter.setOnTaskClickListener(new TaskAdapter.OnTaskClickListener() {
-            @Override
-            public void onTaskClick(TaskModel task) {
-                // Handle task click
-            }
-
-            @Override
-            public void onTaskCheckedChanged(TaskModel task, boolean isChecked) {
-                // Handle checkbox
-            }
-
-            @Override
-            public void onTaskPinClicked(TaskModel task) {
-                // Handle pin
-            }
-
-            @Override
-            public void onTaskDeleteClicked(TaskModel task) {
-                // Handle delete
-            }
-
-            @Override
-            public void onTaskMoveClicked(TaskModel task) {
-                // Handle move
-            }
-
-            @Override
-            public void onTaskDateClicked(TaskModel task) {
-                // Handle date
-            }
+        // Clear button
+        btnClearSearch.setOnClickListener(v -> {
+            searchInput.setText("");
         });
 
-        searchResultsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        searchResultsRecyclerView.setAdapter(taskAdapter);
+        // Adapters
+        searchTaskAdapter = new SearchTaskAdapter(new ArrayList<>(), task -> {
+            hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.TaskDetailBottomSheet bottomSheet = 
+                    new hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.TaskDetailBottomSheet(task);
+            bottomSheet.setHighlightKeyword(searchInput.getText().toString().trim());
+            bottomSheet.setOnTaskUpdatedListener(() -> {
+                performSearch(searchInput.getText().toString().trim());
+            });
+            bottomSheet.show(getSupportFragmentManager(), "TaskDetailBottomSheet");
+        });
+        tasksRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        tasksRecyclerView.setAdapter(searchTaskAdapter);
+
+        searchListAdapter = new SearchListAdapter(new ArrayList<>(), list -> {
+            android.content.Intent intent = new android.content.Intent(SearchActivity.this, MainActivity.class);
+            intent.putExtra("EXTRA_LIST_ID", list.getId());
+            intent.putExtra("EXTRA_LIST_ICON_RES_ID", list.getIconResId());
+            if (list.getEmojiIcon() != null) {
+                intent.putExtra("EXTRA_LIST_EMOJI", list.getEmojiIcon());
+            }
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(intent);
+            finish();
+        });
+        listsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        listsRecyclerView.setAdapter(searchListAdapter);
     }
 
     private void setupSearchLogic() {
@@ -120,20 +139,54 @@ public class SearchActivity extends AppCompatActivity {
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 String query = s.toString().trim();
                 if (query.isEmpty()) {
-                    // Show empty state
+                    btnClearSearch.setVisibility(View.GONE);
                     emptyStateContainer.setVisibility(View.VISIBLE);
-                    searchResultsRecyclerView.setVisibility(View.GONE);
-                    searchResults.clear();
-                    taskAdapter.notifyDataSetChanged();
+                    searchResultsContainer.setVisibility(View.GONE);
+                    searchTaskAdapter.updateData(new ArrayList<>(), "");
+                    searchListAdapter.updateData(new ArrayList<>(), "");
                 } else {
-                    // TODO: Implement actual search logic here
-                    emptyStateContainer.setVisibility(View.GONE);
-                    searchResultsRecyclerView.setVisibility(View.VISIBLE);
+                    btnClearSearch.setVisibility(View.VISIBLE);
+                    performSearch(query);
                 }
             }
 
             @Override
             public void afterTextChanged(Editable s) {}
         });
+    }
+
+    private void performSearch(String query) {
+        List<TaskModel> matchedTasks = dbHelper.searchTasks(query);
+        List<DrawerMenuItem> matchedLists = dbHelper.searchLists(query);
+
+        if (matchedTasks.isEmpty() && matchedLists.isEmpty()) {
+            emptyStateContainer.setVisibility(View.VISIBLE);
+            searchResultsContainer.setVisibility(View.GONE);
+        } else {
+            emptyStateContainer.setVisibility(View.GONE);
+            searchResultsContainer.setVisibility(View.VISIBLE);
+
+            // Handle Tasks Section
+            if (matchedTasks.isEmpty()) {
+                tasksSection.setVisibility(View.GONE);
+            } else {
+                tasksSection.setVisibility(View.VISIBLE);
+                if (matchedTasks.size() > 4) {
+                    searchTaskAdapter.updateData(matchedTasks.subList(0, 4), query);
+                    tvTasksSeeMore.setVisibility(View.VISIBLE);
+                } else {
+                    searchTaskAdapter.updateData(matchedTasks, query);
+                    tvTasksSeeMore.setVisibility(View.GONE);
+                }
+            }
+
+            // Handle Lists Section
+            if (matchedLists.isEmpty()) {
+                listsSection.setVisibility(View.GONE);
+            } else {
+                listsSection.setVisibility(View.VISIBLE);
+                searchListAdapter.updateData(matchedLists, query);
+            }
+        }
     }
 }
