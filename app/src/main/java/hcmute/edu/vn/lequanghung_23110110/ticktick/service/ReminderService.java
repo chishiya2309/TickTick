@@ -6,6 +6,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
+import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
@@ -33,12 +34,8 @@ public class ReminderService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && intent.hasExtra("TASK_ID")) {
-            int taskId = intent.getIntExtra("TASK_ID", -1);
-            String taskTitle = intent.getStringExtra("TASK_TITLE");
-            Log.d(TAG, "Nhận báo thức cho task: " + taskTitle);
-            NotificationHelper.showNotification(this, taskId, taskTitle);
-        }
+        // Thay vì xử lý logic ở đây, chúng ta dùng scheduleAllReminders qua Binder hoặc khi Service khởi chạy
+        scheduleAllReminders();
         return START_STICKY;
     }
 
@@ -47,13 +44,13 @@ public class ReminderService extends Service {
         return binder;
     }
 
-    /**
-     * Lập lịch báo thức cho tất cả các task chưa hoàn thành
-     */
     public void scheduleAllReminders() {
         List<TaskModel> upcomingTasks = dbHelper.getUpcomingTasks();
         for (TaskModel task : upcomingTasks) {
             scheduleTaskReminder(task);
+            if (task.isPinned()) {
+                scheduleStrictAlarm(this, task.getId(), task.getTitle(), task.getDueDateMillis());
+            }
         }
     }
 
@@ -61,35 +58,78 @@ public class ReminderService extends Service {
         if (task.getDueDateMillis() <= 0 || task.isCompleted()) return;
 
         long reminderTime = task.getDueDateMillis() - (15 * 60 * 1000); // 15 phút trước
-        if (reminderTime < System.currentTimeMillis()) return; // Bỏ qua nếu đã qua thời điểm nhắc
+        if (reminderTime < System.currentTimeMillis()) return;
 
-        Intent intent = new Intent(this, ReminderService.class);
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, AlarmReceiver.class);
+        intent.setAction(AlarmReceiver.ACTION_SHOW_NOTIFICATION);
         intent.putExtra("TASK_ID", task.getId());
         intent.putExtra("TASK_TITLE", task.getTitle());
 
-        PendingIntent pendingIntent = PendingIntent.getService(
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 this,
                 task.getId(),
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         if (alarmManager != null) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminderTime, pendingIntent);
-            Log.d(TAG, "Đã đặt nhắc nhở cho: " + task.getTitle() + " lúc " + reminderTime);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminderTime, pendingIntent);
+            } else {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, reminderTime, pendingIntent);
+            }
+        }
+    }
+
+    public static void scheduleStrictAlarm(Context context, int taskId, String title, long timeInMillis) {
+        if (timeInMillis < System.currentTimeMillis()) return;
+
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(context, AlarmReceiver.class);
+        intent.setAction(AlarmReceiver.ACTION_START_ALARM);
+        intent.putExtra("TASK_ID", taskId);
+        intent.putExtra("TASK_TITLE", title);
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context,
+                taskId,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        if (alarmManager != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, timeInMillis, pendingIntent);
+            } else {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, timeInMillis, pendingIntent);
+            }
         }
     }
 
     public void cancelTaskReminder(int taskId) {
-        Intent intent = new Intent(this, ReminderService.class);
-        PendingIntent pendingIntent = PendingIntent.getService(
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        
+        // Hủy thông báo thường
+        Intent intent = new Intent(this, AlarmReceiver.class);
+        intent.setAction(AlarmReceiver.ACTION_SHOW_NOTIFICATION);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 this, taskId, intent, PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE
         );
         if (pendingIntent != null) {
-            AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
             alarmManager.cancel(pendingIntent);
             pendingIntent.cancel();
+        }
+
+        // Hủy Strict Alarm
+        Intent strictIntent = new Intent(this, AlarmReceiver.class);
+        strictIntent.setAction(AlarmReceiver.ACTION_START_ALARM);
+        PendingIntent strictPendingIntent = PendingIntent.getBroadcast(
+                this, taskId, strictIntent, PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE
+        );
+        if (strictPendingIntent != null) {
+            alarmManager.cancel(strictPendingIntent);
+            strictPendingIntent.cancel();
         }
     }
 }
