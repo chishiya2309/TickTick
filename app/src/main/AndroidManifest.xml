@@ -28,6 +28,12 @@
             android:name=".activity.MainActivity"
             android:exported="false" />
 
+        <!-- Search Screen -->
+        <activity
+            android:name=".activity.SearchActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateVisible" />
+
         <service
             android:name=".service.ReminderService"
             android:enabled="true"

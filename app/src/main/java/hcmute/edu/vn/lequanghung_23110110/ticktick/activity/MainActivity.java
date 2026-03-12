@@ -692,7 +692,10 @@ public class MainActivity extends AppCompatActivity {
 
         // Header buttons
         findViewById(R.id.drawer_btn_search)
-                .setOnClickListener(v -> Toast.makeText(this, "Tìm kiếm", Toast.LENGTH_SHORT).show());
+                .setOnClickListener(v -> {
+                    Intent intent = new Intent(MainActivity.this, SearchActivity.class);
+                    startActivity(intent);
+                });
         findViewById(R.id.drawer_btn_settings)
                 .setOnClickListener(v -> Toast.makeText(this, "Cài đặt", Toast.LENGTH_SHORT).show());
 
