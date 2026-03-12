@@ -43,6 +43,8 @@ dependencies {
     implementation(libs.recyclerview)
     implementation(libs.coordinatorlayout)
     implementation(libs.gson)
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
