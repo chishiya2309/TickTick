@@ -629,6 +629,7 @@ public class MainActivity extends AppCompatActivity {
     public void addNewListToDrawer(String name, String emojiIcon) {
         drawerItems.clear();
         drawerItems.addAll(buildDrawerMenuItems());
+        refreshDrawerBadges();
         drawerAdapter.notifyDataSetChanged();
         if (drawerItems.size() > 5) ((RecyclerView)findViewById(R.id.drawer_recycler_view)).smoothScrollToPosition(5);
     }
@@ -638,7 +639,8 @@ public class MainActivity extends AppCompatActivity {
         DrawerMenuItem item = drawerItems.get(position);
         item.setTitle(newName);
         item.setEmojiIcon(newEmojiIcon);
-        drawerAdapter.notifyItemChanged(position);
+        refreshDrawerBadges();
+        drawerAdapter.notifyDataSetChanged();
         if (item.isSelected()) updateToolbarForList(newName, item.getIconResId(), newEmojiIcon);
         if (pinnedItems != null && pinnedAdapter != null) {
             pinnedItems.clear();
@@ -651,6 +653,7 @@ public class MainActivity extends AppCompatActivity {
     public void deleteListFromDrawer(int listId, int position) {
         dbHelper.deleteList(listId);
         DrawerMenuItem deletedItem = drawerItems.remove(position);
+        refreshDrawerBadges();
         drawerAdapter.notifyItemRemoved(position);
         if (deletedItem.isSelected()) {
             DrawerMenuItem todayItem = drawerItems.get(0);
@@ -687,6 +690,7 @@ public class MainActivity extends AppCompatActivity {
                 bottomSheet.setOnTaskUpdatedListener(() -> {
                     Log.d(TAG, "UI: TaskDetail updated, calling rescheduleReminders");
                     loadTasksForList(currentListId);
+                    refreshDrawerBadges();
                     rescheduleReminders();
                 });
                 bottomSheet.show(getSupportFragmentManager(), "TaskDetailBottomSheet");
@@ -695,18 +699,21 @@ public class MainActivity extends AppCompatActivity {
             public void onTaskCheckedChanged(TaskModel task, boolean isChecked) {
                 dbHelper.updateTaskCompleted(task.getId(), isChecked);
                 loadTasksForList(currentListId);
+                refreshDrawerBadges();
                 rescheduleReminders();
             }
             @Override
             public void onTaskPinClicked(TaskModel task) {
                 dbHelper.updateTaskPinned(task.getId(), !task.isPinned());
                 loadTasksForList(currentListId);
+                refreshDrawerBadges();
                 rescheduleReminders();
             }
             @Override
             public void onTaskDeleteClicked(TaskModel task) {
                 dbHelper.deleteTask(task.getId());
                 loadTasksForList(currentListId);
+                refreshDrawerBadges();
                 rescheduleReminders();
             }
             @Override
@@ -714,6 +721,7 @@ public class MainActivity extends AppCompatActivity {
                 MoveTaskBottomSheet moveSheet = new MoveTaskBottomSheet(task.getId(), task.getListId());
                 moveSheet.setOnTaskMovedListener((newListId, newListName, iconName) -> {
                     loadTasksForList(currentListId);
+                    refreshDrawerBadges();
                     rescheduleReminders();
                     showMoveToast(newListName, iconName);
                 });
@@ -731,6 +739,7 @@ public class MainActivity extends AppCompatActivity {
                 datePicker.setOnDateClearedListener(() -> {
                     dbHelper.updateTaskDate(task.getId(), null, 0);
                     loadTasksForList(currentListId);
+                    refreshDrawerBadges();
                     rescheduleReminders();
                 });
                 datePicker.show(getSupportFragmentManager(), "DatePickerBottomSheet");
@@ -843,6 +852,7 @@ public class MainActivity extends AppCompatActivity {
             dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate);
             
             loadTasksForList(currentListId);
+            refreshDrawerBadges();
             rescheduleReminders();
             bottomSheet.dismiss();
             Toast.makeText(this, "Đã thêm: " + title, Toast.LENGTH_SHORT).show();
