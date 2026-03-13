@@ -19,7 +19,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "ticktick.db";
-    private static final int DB_VERSION = 8; // Nâng cấp để reset database và thêm description + is_pinned
+    private static final int DB_VERSION = 9; // Tăng lên 9 để fix lỗi downgrade từ version 9 về 8
 
     // === Table: lists ===
     private static final String TABLE_LISTS = "lists";
@@ -89,7 +89,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        if (oldVersion < 8) {
+        if (oldVersion < 9) {
             // Reset DB theo yêu cầu của User để test Default Lists
             db.execSQL("DROP TABLE IF EXISTS " + TABLE_TASKS);
             db.execSQL("DROP TABLE IF EXISTS " + TABLE_LISTS);
@@ -242,6 +242,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 "(" + COL_TASK_DATE_TAG + " = 'Ngày mai'))";
 
         String[] selectionArgs = new String[] {
+                String.valueOf(startOfTomorrowMillis),
                 String.valueOf(startOfTomorrowMillis),
                 String.valueOf(endOfTomorrowMillis)
         };
@@ -511,6 +512,14 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         ContentValues cv = new ContentValues();
         cv.put(COL_TASK_DATE_TAG, dateTag);
         cv.put(COL_TASK_DUE_DATE, dueDateMillis);
+        db.update(TABLE_TASKS, cv, COL_TASK_ID + " = ?", new String[] { String.valueOf(taskId) });
+    }
+
+    /** Cập nhật thời gian nhắc nhở của Task */
+    public void updateTaskDueDate(int taskId, long newDueDateMillis) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COL_TASK_DUE_DATE, newDueDateMillis);
         db.update(TABLE_TASKS, cv, COL_TASK_ID + " = ?", new String[] { String.valueOf(taskId) });
     }
 
