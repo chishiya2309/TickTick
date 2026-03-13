@@ -28,6 +28,7 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
     private TaskModel task;
     private TaskDatabaseHelper dbHelper;
     private OnTaskUpdatedListener updateListener;
+    private String highlightKeyword = "";
 
     public interface OnTaskUpdatedListener {
         void onTaskUpdated();
@@ -35,6 +36,10 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
 
     public TaskDetailBottomSheet(TaskModel task) {
         this.task = task;
+    }
+
+    public void setHighlightKeyword(String keyword) {
+        this.highlightKeyword = keyword != null ? keyword : "";
     }
 
     public void setOnTaskUpdatedListener(OnTaskUpdatedListener listener) {
@@ -86,9 +91,10 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
 
         // Bind data
         if (task != null) {
-            editTitle.setText(task.getTitle());
+            int colorHighlight = android.graphics.Color.parseColor("#f59e0b");
+            editTitle.setText(getHighlightedText(task.getTitle(), highlightKeyword, colorHighlight), TextView.BufferType.EDITABLE);
             if (task.getDescription() != null) {
-                editDescription.setText(task.getDescription());
+                editDescription.setText(getHighlightedText(task.getDescription(), highlightKeyword, colorHighlight), TextView.BufferType.EDITABLE);
             }
             checkbox.setChecked(task.isCompleted());
 
@@ -168,5 +174,23 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
                 }
             }
         }
+    }
+
+    private CharSequence getHighlightedText(String text, String keyword, int color) {
+        if (keyword == null || keyword.isEmpty() || text == null || text.isEmpty()) {
+            return text != null ? text : "";
+        }
+
+        String lowerText = text.toLowerCase();
+        String lowerKeyword = keyword.toLowerCase();
+        android.text.SpannableString spannable = new android.text.SpannableString(text);
+
+        int start = lowerText.indexOf(lowerKeyword);
+        while (start >= 0) {
+            int end = start + lowerKeyword.length();
+            spannable.setSpan(new android.text.style.ForegroundColorSpan(color), start, end, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            start = lowerText.indexOf(lowerKeyword, end);
+        }
+        return spannable;
     }
 }
