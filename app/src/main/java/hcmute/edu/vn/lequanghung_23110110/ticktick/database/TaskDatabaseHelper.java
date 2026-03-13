@@ -202,7 +202,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1);
             tasks.add(task);
         }
-    cursor.close();
+        cursor.close();
         return tasks;
     }
 
@@ -276,7 +276,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
         String[] selectionArgs = new String[] {
                 String.valueOf(startOfNext7DaysMillis),
-                String.valueOf(endOfNext7DaysMillis)
+                String.valueOf(startOfNext7DaysMillis)
         };
 
         Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null,
@@ -718,5 +718,55 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         }
         cursor.close();
         return tasks;
+    }
+
+    public List<TaskModel> searchTasks(String query) {
+        List<TaskModel> tasks = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+
+        String selection = COL_TASK_TITLE + " LIKE ? OR " + COL_TASK_DESCRIPTION + " LIKE ?";
+        String[] selectionArgs = new String[] { "%" + query + "%", "%" + query + "%" };
+
+        Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null,
+                COL_TASK_COMPLETED + " ASC, " + COL_TASK_CREATED + " DESC");
+
+        while (cursor.moveToNext()) {
+            tasks.add(new TaskModel(
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DESCRIPTION)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1));
+        }
+        cursor.close();
+        return tasks;
+    }
+
+    public List<DrawerMenuItem> searchLists(String query) {
+        List<DrawerMenuItem> lists = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+
+        String selection = COL_LIST_NAME + " LIKE ?";
+        String[] selectionArgs = new String[] { "%" + query + "%" };
+
+        Cursor cursor = db.query(TABLE_LISTS, new String[] { COL_LIST_ID, COL_LIST_NAME, COL_LIST_ICON },
+                selection, selectionArgs, null, null, COL_LIST_ORDER + " ASC, " + COL_LIST_ID + " ASC");
+
+        while (cursor.moveToNext()) {
+            int id = cursor.getInt(0);
+            String listName = cursor.getString(1);
+            String iconName = cursor.getString(2);
+
+            if (iconName != null && iconName.startsWith("ic_")) {
+                lists.add(new DrawerMenuItem(id, listName, 0, DrawerMenuItem.ItemType.LIST));
+            } else {
+                lists.add(new DrawerMenuItem(id, listName, iconName, DrawerMenuItem.ItemType.LIST));
+            }
+        }
+        cursor.close();
+        return lists;
     }
 }

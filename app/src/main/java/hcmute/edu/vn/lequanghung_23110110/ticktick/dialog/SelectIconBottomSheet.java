@@ -40,13 +40,12 @@ public class SelectIconBottomSheet {
         // Đóng
         sheetView.findViewById(R.id.btn_close_icon).setOnClickListener(v -> bottomSheet.dismiss());
 
-        // Setup RecyclerView
+        // View references
         RecyclerView recyclerEmoji = sheetView.findViewById(R.id.recycler_emoji);
-        recyclerEmoji.setLayoutManager(new GridLayoutManager(context, 7)); // 7 cột giống app thật
+        recyclerEmoji.setLayoutManager(new GridLayoutManager(context, 7)); 
+        android.widget.ProgressBar progressEmoji = sheetView.findViewById(R.id.progress_emoji);
 
-        List<EmojiResponse> allEmojis = loadEmojisFromAssets(context);
-
-        EmojiAdapter adapter = new EmojiAdapter(allEmojis, emoji -> {
+        EmojiAdapter adapter = new EmojiAdapter(new ArrayList<>(), emoji -> {
             if (listener != null) {
                 listener.onIconSelected(emoji);
             }
@@ -54,52 +53,60 @@ public class SelectIconBottomSheet {
         });
         recyclerEmoji.setAdapter(adapter);
 
-        // Xử lý tìm kiếm
-        EditText inputSearch = sheetView.findViewById(R.id.input_search_emoji);
-        inputSearch.addTextChangedListener(new TextWatcher() {
+        hcmute.edu.vn.lequanghung_23110110.ticktick.repository.EmojiRepository.getInstance().getEmojis(context, new hcmute.edu.vn.lequanghung_23110110.ticktick.repository.EmojiRepository.FetchCallback() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                String query = s.toString().toLowerCase();
-                List<EmojiResponse> filteredList = new ArrayList<>();
-                for (EmojiResponse emoji : allEmojis) {
-                    // Nếu có unicodeName trong file json thì lọc, không có thì bỏ qua (file json
-                    // rút gọn chỉ có character)
-                    // Vì file `emojis.json` hiện tại chỉ chứa `character`, ta có thể không cần
-                    // search hoặc search theo group (nếu có).
-                    // Nếu bạn cập nhật file `emojis.json` đầy đủ thuộc tính `unicodeName`, bạn có
-                    // thể dùng code sau:
-                    if (emoji.name != null && emoji.name.toLowerCase().contains(query)) {
-                        filteredList.add(emoji);
-                    }
-                }
-
-                // Demo logic: Nếu query trống, trả lại toàn bộ. Ngược lại (nếu file JSON hiện
-                // tại của ta trống unicodeName) thì list sẽ rỗng.
-                if (query.isEmpty()) {
+            public void onSuccess(List<EmojiResponse> allEmojis) {
+                sheetView.post(() -> {
+                    progressEmoji.setVisibility(View.GONE);
+                    recyclerEmoji.setVisibility(View.VISIBLE);
                     adapter.updateList(allEmojis);
-                } else {
-                    adapter.updateList(filteredList);
-                }
+
+                    // Xử lý tìm kiếm sau khi có dữ liệu
+                    EditText inputSearch = sheetView.findViewById(R.id.input_search_emoji);
+                    inputSearch.addTextChangedListener(new TextWatcher() {
+                        @Override
+                        public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                        @Override
+                        public void onTextChanged(CharSequence s, int start, int before, int count) {
+                            String query = s.toString().toLowerCase();
+                            if (query.isEmpty()) {
+                                adapter.updateList(allEmojis);
+                            } else {
+                                List<EmojiResponse> filteredList = new ArrayList<>();
+                                for (EmojiResponse emoji : allEmojis) {
+                                    if (emoji.name != null && emoji.name.toLowerCase().contains(query)) {
+                                        filteredList.add(emoji);
+                                    }
+                                }
+                                adapter.updateList(filteredList);
+                            }
+                        }
+
+                        @Override
+                        public void afterTextChanged(Editable s) {}
+                    });
+
+                    // Xử lý nút Random
+                    sheetView.findViewById(R.id.btn_random_emoji).setOnClickListener(v -> {
+                        if (!allEmojis.isEmpty()) {
+                            Random random = new Random();
+                            EmojiResponse randomEmoji = allEmojis.get(random.nextInt(allEmojis.size()));
+                            if (listener != null) {
+                                listener.onIconSelected(randomEmoji.character);
+                            }
+                            bottomSheet.dismiss();
+                        }
+                    });
+                });
             }
 
             @Override
-            public void afterTextChanged(Editable s) {
-            }
-        });
-
-        // Xử lý nút Random
-        sheetView.findViewById(R.id.btn_random_emoji).setOnClickListener(v -> {
-            if (allEmojis != null && !allEmojis.isEmpty()) {
-                Random random = new Random();
-                EmojiResponse randomEmoji = allEmojis.get(random.nextInt(allEmojis.size()));
-                if (listener != null) {
-                    listener.onIconSelected(randomEmoji.character);
-                }
-                bottomSheet.dismiss();
+            public void onError(String message) {
+                sheetView.post(() -> {
+                    progressEmoji.setVisibility(View.GONE);
+                    android.widget.Toast.makeText(context, "Lỗi tải emoji: " + message, android.widget.Toast.LENGTH_SHORT).show();
+                });
             }
         });
 
@@ -112,25 +119,5 @@ public class SelectIconBottomSheet {
         });
 
         bottomSheet.show();
-    }
-
-    private static List<EmojiResponse> loadEmojisFromAssets(Context context) {
-        String json = null;
-        try {
-            InputStream is = context.getAssets().open("emojis.json");
-            int size = is.available();
-            byte[] buffer = new byte[size];
-            is.read(buffer);
-            is.close();
-            json = new String(buffer, StandardCharsets.UTF_8);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            Log.e("SelectIconBottomSheet", "Error loading JSON: " + ex.getMessage());
-            return new ArrayList<>();
-        }
-
-        Type listType = new TypeToken<List<EmojiResponse>>() {
-        }.getType();
-        return new Gson().fromJson(json, listType);
     }
 }

@@ -124,8 +124,40 @@ public class MainActivity extends AppCompatActivity {
         setupBottomNavigation();
         setupBackPressHandler();
 
-        // Load tasks mặc định cho "Hôm nay"
-        loadTasksForList(currentListId);
+        // Xử lý intent nếu có, nếu không thì load mặc định "Hôm nay"
+        if (!handleIntent(getIntent())) {
+            loadTasksForList(currentListId);
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIntent(intent);
+    }
+
+    private boolean handleIntent(Intent intent) {
+        if (intent != null && intent.hasExtra("EXTRA_LIST_ID")) {
+            int listId = intent.getIntExtra("EXTRA_LIST_ID", 1);
+            int iconResId = intent.getIntExtra("EXTRA_LIST_ICON_RES_ID", 0);
+            String emojiStr = intent.getStringExtra("EXTRA_LIST_EMOJI");
+            
+            // Tìm và setSelected trong drawer
+            if (drawerItems != null && drawerAdapter != null) {
+                for (int i = 0; i < drawerItems.size(); i++) {
+                    DrawerMenuItem item = drawerItems.get(i);
+                    if (item != null && item.getId() == listId && item.getType() != DrawerMenuItem.ItemType.SEPARATOR) {
+                        drawerAdapter.setSelectedPosition(i);
+                        break;
+                    }
+                }
+            }
+            
+            loadTasksForList(listId, iconResId, emojiStr);
+            return true;
+        }
+        return false;
     }
 
     private void updateToolbarForList(String listName, int iconResId, String emojiIcon) {
@@ -692,7 +724,10 @@ public class MainActivity extends AppCompatActivity {
 
         // Header buttons
         findViewById(R.id.drawer_btn_search)
-                .setOnClickListener(v -> Toast.makeText(this, "Tìm kiếm", Toast.LENGTH_SHORT).show());
+                .setOnClickListener(v -> {
+                    Intent intent = new Intent(MainActivity.this, SearchActivity.class);
+                    startActivity(intent);
+                });
         findViewById(R.id.drawer_btn_settings)
                 .setOnClickListener(v -> Toast.makeText(this, "Cài đặt", Toast.LENGTH_SHORT).show());
 
