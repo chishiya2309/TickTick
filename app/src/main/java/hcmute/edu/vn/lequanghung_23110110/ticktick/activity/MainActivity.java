@@ -142,6 +142,11 @@ public class MainActivity extends AppCompatActivity {
         if (!handleIntent(getIntent())) {
             loadTasksForList(currentListId);
         }
+
+        DailyBriefingScheduler.setupDailyBriefingWork(this);
+        loadTasksForList(currentListId);
+
+        checkPermissions();
     }
 
     @Override
@@ -172,11 +177,6 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
         return false;
-
-        DailyBriefingScheduler.setupDailyBriefingWork(this);
-        loadTasksForList(currentListId);
-
-        checkPermissions();
     }
 
     private void checkPermissions() {
