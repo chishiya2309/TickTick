@@ -82,7 +82,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="1 days early (09:00)"
+            android:text="Sớm 1 ngày (09:00)"
             android:textColor="#B0B0B0"
             android:textSize="15sp" />
         <ImageView
@@ -107,7 +107,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="2 days early (09:00)"
+            android:text="Sớm 2 ngày (09:00)"
             android:textColor="#B0B0B0"
             android:textSize="15sp" />
         <ImageView
@@ -132,7 +132,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="3 days early (09:00)"
+            android:text="Sớm 3 ngày (09:00)"
             android:textColor="#B0B0B0"
             android:textSize="15sp" />
         <ImageView
@@ -157,11 +157,143 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="1 weeks early (09:00)"
+            android:text="Sớm 1 tuần (09:00)"
             android:textColor="#B0B0B0"
             android:textSize="15sp" />
         <ImageView
             android:id="@+id/check_1_week"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_check_blue"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- ═══ TIME-BASED PRESETS (shown when time is selected) ═══ -->
+
+    <!-- Đúng giờ -->
+    <LinearLayout
+        android:id="@+id/reminder_on_time"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/text_on_time"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Đúng giờ"
+            android:textColor="#B0B0B0"
+            android:textSize="15sp" />
+        <ImageView
+            android:id="@+id/check_on_time"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_check_blue"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- 5 mins sớm -->
+    <LinearLayout
+        android:id="@+id/reminder_5_mins"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/text_5_mins"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Sớm 5 phút"
+            android:textColor="#B0B0B0"
+            android:textSize="15sp" />
+        <ImageView
+            android:id="@+id/check_5_mins"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_check_blue"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- 30 mins sớm -->
+    <LinearLayout
+        android:id="@+id/reminder_30_mins"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/text_30_mins"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Sớm 30 phút"
+            android:textColor="#B0B0B0"
+            android:textSize="15sp" />
+        <ImageView
+            android:id="@+id/check_30_mins"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_check_blue"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- 1 hours sớm -->
+    <LinearLayout
+        android:id="@+id/reminder_1_hour"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/text_1_hour"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Sớm 1 giờ"
+            android:textColor="#B0B0B0"
+            android:textSize="15sp" />
+        <ImageView
+            android:id="@+id/check_1_hour"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_check_blue"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- 1 days sớm -->
+    <LinearLayout
+        android:id="@+id/reminder_1_day_time"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/text_1_day_time"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Sớm 1 ngày"
+            android:textColor="#B0B0B0"
+            android:textSize="15sp" />
+        <ImageView
+            android:id="@+id/check_1_day_time"
             android:layout_width="20dp"
             android:layout_height="20dp"
             android:src="@drawable/ic_check_blue"
@@ -201,23 +333,6 @@
     </LinearLayout>
 
     <!-- Nhắc nhở liên tục toggle -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Nhắc nhở liên tục🔔"
-            android:textColor="#B0B0B0"
-            android:textSize="15sp" />
-        <Switch
-            android:id="@+id/switch_continuous"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-    </LinearLayout>
 
     <!-- Buttons -->
     <LinearLayout

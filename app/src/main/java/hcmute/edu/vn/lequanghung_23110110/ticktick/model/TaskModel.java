@@ -1,5 +1,8 @@
 package hcmute.edu.vn.lequanghung_23110110.ticktick.model;
 
+import java.util.List;
+import java.util.ArrayList;
+
 public class TaskModel implements TaskListItem {
 
     private int id; // DB primary key
@@ -10,10 +13,11 @@ public class TaskModel implements TaskListItem {
     private long dueDateMillis; // Actual time
     private boolean isCompleted;
     private boolean isPinned;
+    private List<String> reminders;
 
     // Constructor đầy đủ (từ DB)
     public TaskModel(int id, String title, String description, int listId, String dateTag, long dueDateMillis,
-            boolean isCompleted, boolean isPinned) {
+            boolean isCompleted, boolean isPinned, List<String> reminders) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -22,10 +26,11 @@ public class TaskModel implements TaskListItem {
         this.dueDateMillis = dueDateMillis;
         this.isCompleted = isCompleted;
         this.isPinned = isPinned;
+        this.reminders = reminders != null ? reminders : new ArrayList<>();
     }
 
     // Constructor tạo mới (chưa có id)
-    public TaskModel(String title, String description, int listId, String dateTag, long dueDateMillis) {
+    public TaskModel(String title, String description, int listId, String dateTag, long dueDateMillis, List<String> reminders) {
         this.id = -1;
         this.title = title;
         this.description = description;
@@ -34,6 +39,7 @@ public class TaskModel implements TaskListItem {
         this.dueDateMillis = dueDateMillis;
         this.isCompleted = false;
         this.isPinned = false;
+        this.reminders = reminders != null ? reminders : new ArrayList<>();
     }
 
     // --- Getters & Setters ---
@@ -99,6 +105,14 @@ public class TaskModel implements TaskListItem {
 
     public void setPinned(boolean pinned) {
         isPinned = pinned;
+    }
+
+    public List<String> getReminders() {
+        return reminders;
+    }
+
+    public void setReminders(List<String> reminders) {
+        this.reminders = reminders != null ? reminders : new ArrayList<>();
     }
 
     @Override
