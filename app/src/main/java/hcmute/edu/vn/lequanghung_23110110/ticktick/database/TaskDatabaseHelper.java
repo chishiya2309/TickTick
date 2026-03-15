@@ -243,7 +243,6 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
         String[] selectionArgs = new String[] {
                 String.valueOf(startOfTomorrowMillis),
-                String.valueOf(startOfTomorrowMillis),
                 String.valueOf(endOfTomorrowMillis)
         };
 
@@ -277,7 +276,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
         String[] selectionArgs = new String[] {
                 String.valueOf(startOfNext7DaysMillis),
-                String.valueOf(startOfNext7DaysMillis)
+                String.valueOf(endOfNext7DaysMillis)
         };
 
         Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null,
