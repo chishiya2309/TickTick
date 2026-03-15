@@ -54,4 +54,5 @@
     <string name="date_none">Không có</string>
 
     <string name="date_clear">Xóa</string>
+    <string name="date_past_warning">Không thể chọn ngày trong quá khứ! Vui lòng chọn ngày khác.</string>
 </resources>

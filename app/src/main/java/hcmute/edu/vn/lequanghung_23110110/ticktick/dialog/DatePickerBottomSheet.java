@@ -109,6 +109,25 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
         view.findViewById(R.id.date_btn_close).setOnClickListener(v -> dismiss());
         view.findViewById(R.id.date_btn_confirm).setOnClickListener(v -> {
             if (selectedDate != null && dateListener != null) {
+                // Kiểm tra ngày quá khứ
+                Calendar today = Calendar.getInstance();
+                today.set(Calendar.HOUR_OF_DAY, 0);
+                today.set(Calendar.MINUTE, 0);
+                today.set(Calendar.SECOND, 0);
+                today.set(Calendar.MILLISECOND, 0);
+
+                Calendar selDay = (Calendar) selectedDate.clone();
+                selDay.set(Calendar.HOUR_OF_DAY, 0);
+                selDay.set(Calendar.MINUTE, 0);
+                selDay.set(Calendar.SECOND, 0);
+                selDay.set(Calendar.MILLISECOND, 0);
+
+                if (selDay.before(today)) {
+                    Toast.makeText(getContext(),
+                            R.string.date_past_warning, Toast.LENGTH_SHORT).show();
+                    return; // Không dismiss, cho chọn lại
+                }
+
                 SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
                 String dateTag = sdf.format(selectedDate.getTime());
 
