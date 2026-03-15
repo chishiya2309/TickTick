@@ -79,7 +79,23 @@ public class CalendarAdapter extends BaseAdapter {
                 && displayYear == todayYear);
         boolean isSelected = (day == selectedDay);
 
-        if (isSelected) {
+        // Kiểm tra ngày quá khứ
+        boolean isPast = false;
+        if (displayYear < todayYear) {
+            isPast = true;
+        } else if (displayYear == todayYear) {
+            if (displayMonth < todayMonth) {
+                isPast = true;
+            } else if (displayMonth == todayMonth && day < todayDay) {
+                isPast = true;
+            }
+        }
+
+        if (isSelected && isPast) {
+            // Ngày quá khứ được chọn → vòng tròn đỏ, text trắng
+            dayText.setBackgroundResource(R.drawable.bg_day_past_selected);
+            dayText.setTextColor(Color.WHITE);
+        } else if (isSelected) {
             // Ngày được chọn → vòng tròn xanh, text trắng
             dayText.setBackgroundResource(R.drawable.bg_day_selected);
             dayText.setTextColor(Color.WHITE);
@@ -87,6 +103,10 @@ public class CalendarAdapter extends BaseAdapter {
             // Ngày hôm nay → vòng tròn viền trắng
             dayText.setBackgroundResource(R.drawable.bg_day_today);
             dayText.setTextColor(Color.WHITE);
+        } else if (isPast) {
+            // Ngày quá khứ chưa chọn → text đỏ nhạt
+            dayText.setBackground(null);
+            dayText.setTextColor(Color.parseColor("#EF9A9A"));
         } else {
             // Ngày bình thường
             dayText.setBackground(null);

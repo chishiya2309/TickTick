@@ -19,7 +19,31 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "ticktick.db";
-    private static final int DB_VERSION = 9; // Tăng lên 9 để fix lỗi downgrade từ version 9 về 8
+    private static final int DB_VERSION = 10; // Tăng lên 10 để thêm cột reminders
+
+    // Thêm helper function parse List<String>
+    private String listToString(List<String> list) {
+        if (list == null || list.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < list.size(); i++) {
+            sb.append(list.get(i));
+            if (i < list.size() - 1) sb.append(",");
+        }
+        return sb.toString();
+    }
+
+    private List<String> stringToList(String str) {
+        List<String> list = new ArrayList<>();
+        if (str == null || str.isEmpty()) return list;
+        String[] parts = str.split(",");
+        for (String part : parts) {
+            String trimmed = part.trim();
+            if (!trimmed.isEmpty()) {
+                list.add(trimmed);
+            }
+        }
+        return list;
+    }
 
     // === Table: lists ===
     private static final String TABLE_LISTS = "lists";
@@ -40,6 +64,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     private static final String COL_TASK_COMPLETED = "is_completed";
     private static final String COL_TASK_CREATED = "created_at";
     private static final String COL_TASK_IS_PINNED = "is_pinned"; // New column cho ghim task
+    private static final String COL_TASK_REMINDERS = "reminders"; // New column cho lời nhắc
 
     // Singleton
     private static TaskDatabaseHelper instance;
@@ -74,6 +99,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 + COL_TASK_DUE_DATE + " INTEGER DEFAULT -1, "
                 + COL_TASK_COMPLETED + " INTEGER DEFAULT 0, "
                 + COL_TASK_IS_PINNED + " INTEGER DEFAULT 0, "
+                + COL_TASK_REMINDERS + " TEXT DEFAULT '', "
                 + COL_TASK_CREATED + " INTEGER DEFAULT (strftime('%s','now')), "
                 + "FOREIGN KEY (" + COL_TASK_LIST_ID + ") REFERENCES "
                 + TABLE_LISTS + "(" + COL_LIST_ID + ")"
@@ -89,8 +115,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        if (oldVersion < 9) {
-            // Reset DB theo yêu cầu của User để test Default Lists
+        if (oldVersion < 10) {
+            // Reset DB theo yêu cầu của User để test Default Lists và cập nhật schema
             db.execSQL("DROP TABLE IF EXISTS " + TABLE_TASKS);
             db.execSQL("DROP TABLE IF EXISTS " + TABLE_LISTS);
             onCreate(db);
@@ -116,14 +142,14 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         long yesterdayMillis = todayMillis - (24 * 60 * 60 * 1000L);
         long tomorrowMillis = todayMillis + (24 * 60 * 60 * 1000L);
 
-        insertTaskDirect(db, "Test", "", 1, "Hôm nay", todayMillis, false, false); // Hôm nay
-        insertTaskDirect(db, "Overdue Sample", "", 1, "Hôm qua", yesterdayMillis, false, false); // Quá hạn
-        insertTaskDirect(db, "Test Work", "", 5, "", -1, false, false); // Work (ID=5 do 2 system list mới đẩy)
-        insertTaskDirect(db, "Test Tomorrow", "", 5, "Ngày mai", tomorrowMillis, false, false);
+        insertTaskDirect(db, "Test", "", 1, "Hôm nay", todayMillis, false, false, ""); // Hôm nay
+        insertTaskDirect(db, "Overdue Sample", "", 1, "Hôm qua", yesterdayMillis, false, false, ""); // Quá hạn
+        insertTaskDirect(db, "Test Work", "", 5, "", -1, false, false, ""); // Work (ID=5 do 2 system list mới đẩy)
+        insertTaskDirect(db, "Test Tomorrow", "", 5, "Ngày mai", tomorrowMillis, false, false, "");
     }
 
     private void insertTaskDirect(SQLiteDatabase db, String title, String description,
-            int listId, String dateTag, long dueDateMillis, boolean completed, boolean isPinned) {
+            int listId, String dateTag, long dueDateMillis, boolean completed, boolean isPinned, String reminders) {
         ContentValues cv = new ContentValues();
         cv.put(COL_TASK_TITLE, title);
         cv.put(COL_TASK_DESCRIPTION, description);
@@ -132,6 +158,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         cv.put(COL_TASK_DUE_DATE, dueDateMillis);
         cv.put(COL_TASK_COMPLETED, completed ? 1 : 0);
         cv.put(COL_TASK_IS_PINNED, isPinned ? 1 : 0);
+        cv.put(COL_TASK_REMINDERS, reminders);
         db.insert(TABLE_TASKS, null, cv);
     }
 
@@ -159,7 +186,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1);
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))));
             tasks.add(task);
         }
         cursor.close();
@@ -199,7 +227,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1);
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))));
             tasks.add(task);
         }
         cursor.close();
@@ -224,7 +253,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1);
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))));
         }
         cursor.close();
         return task;
@@ -258,7 +288,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1);
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))));
             tasks.add(task);
         }
         cursor.close();
@@ -291,7 +322,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1);
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))));
             tasks.add(task);
         }
         cursor.close();
@@ -333,7 +365,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1);
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))));
             tasks.add(task);
         }
         cursor.close();
@@ -430,7 +463,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     }
 
     /** Thêm một task mới */
-    public long insertTask(String title, String description, int listId, String dateTag, long dueDateMillis) {
+    public long insertTask(String title, String description, int listId, String dateTag, long dueDateMillis, List<String> reminders) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put(COL_TASK_TITLE, title);
@@ -440,6 +473,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         cv.put(COL_TASK_DUE_DATE, dueDateMillis);
         cv.put(COL_TASK_COMPLETED, 0);
         cv.put(COL_TASK_IS_PINNED, 0);
+        cv.put(COL_TASK_REMINDERS, listToString(reminders));
         return db.insert(TABLE_TASKS, null, cv);
     }
 
@@ -506,11 +540,12 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     }
 
     /** Cập nhật ngày của task */
-    public void updateTaskDate(int taskId, String dateTag, long dueDateMillis) {
+    public void updateTaskDate(int taskId, String dateTag, long dueDateMillis, List<String> reminders) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put(COL_TASK_DATE_TAG, dateTag);
         cv.put(COL_TASK_DUE_DATE, dueDateMillis);
+        cv.put(COL_TASK_REMINDERS, listToString(reminders));
         db.update(TABLE_TASKS, cv, COL_TASK_ID + " = ?", new String[] { String.valueOf(taskId) });
     }
 
@@ -722,7 +757,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1));
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS)))));
         }
         cursor.close();
         return tasks;
@@ -747,7 +783,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1));
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS)))));
         }
         cursor.close();
         return tasks;

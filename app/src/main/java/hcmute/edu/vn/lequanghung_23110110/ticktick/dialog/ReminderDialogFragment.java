@@ -25,16 +25,17 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
 public class ReminderDialogFragment extends DialogFragment {
 
     public interface OnReminderSelectedListener {
-        void onReminderSelected(List<String> selectedReminders, boolean continuous);
+        void onReminderSelected(List<String> selectedReminders);
     }
 
     private OnReminderSelectedListener listener;
     private String defaultTime = "09:00";
     private long taskDateMillis = -1;
+    private boolean hasTimeSelected = false;
+    private List<String> preSelectedItems = new ArrayList<>();
 
     // State
     private final List<String> selectedItems = new ArrayList<>();
-    private boolean isContinuous = false;
 
     public void setOnReminderSelectedListener(OnReminderSelectedListener l) {
         this.listener = l;
@@ -48,16 +49,42 @@ public class ReminderDialogFragment extends DialogFragment {
         this.taskDateMillis = millis;
     }
 
+    public void setHasTimeSelected(boolean hasTime) {
+        this.hasTimeSelected = hasTime;
+    }
+
+    public void setPreSelectedItems(List<String> items) {
+        this.preSelectedItems = items != null ? new ArrayList<>(items) : new ArrayList<>();
+    }
+
     @NonNull
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         View view = LayoutInflater.from(getContext())
                 .inflate(R.layout.dialog_reminder, null);
 
-        setupPresetOptions(view);
-        setupCustomButton(view);
+        // Restore state từ lần chọn trước
+        selectedItems.clear();
+        selectedItems.addAll(preSelectedItems);
 
-        Switch switchContinuous = view.findViewById(R.id.switch_continuous);
+        if (hasTimeSelected) {
+            // Ẩn day-based presets
+            view.findViewById(R.id.reminder_on_day).setVisibility(View.GONE);
+            view.findViewById(R.id.reminder_1_day).setVisibility(View.GONE);
+            view.findViewById(R.id.reminder_2_days).setVisibility(View.GONE);
+            view.findViewById(R.id.reminder_3_days).setVisibility(View.GONE);
+            view.findViewById(R.id.reminder_1_week).setVisibility(View.GONE);
+            // Hiện time-based presets
+            view.findViewById(R.id.reminder_on_time).setVisibility(View.VISIBLE);
+            view.findViewById(R.id.reminder_5_mins).setVisibility(View.VISIBLE);
+            view.findViewById(R.id.reminder_30_mins).setVisibility(View.VISIBLE);
+            view.findViewById(R.id.reminder_1_hour).setVisibility(View.VISIBLE);
+            view.findViewById(R.id.reminder_1_day_time).setVisibility(View.VISIBLE);
+            setupTimeBasedOptions(view);
+        } else {
+            setupPresetOptions(view);
+        }
+        setupCustomButton(view);
 
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setView(view)
@@ -69,9 +96,8 @@ public class ReminderDialogFragment extends DialogFragment {
 
         view.findViewById(R.id.btn_reminder_cancel).setOnClickListener(v -> dismiss());
         view.findViewById(R.id.btn_reminder_ok).setOnClickListener(v -> {
-            isContinuous = switchContinuous.isChecked();
             if (listener != null) {
-                listener.onReminderSelected(new ArrayList<>(selectedItems), isContinuous);
+                listener.onReminderSelected(new ArrayList<>(selectedItems));
             }
             dismiss();
         });
@@ -106,6 +132,18 @@ public class ReminderDialogFragment extends DialogFragment {
         // Set labels
         for (int i = 0; i < options.length; i++) {
             ((TextView) view.findViewById(options[i][2])).setText(labels[i]);
+        }
+
+        // Restore pre-selected state
+        if (!selectedItems.isEmpty()) {
+            checkNone.setVisibility(View.GONE);
+            textNone.setTextColor(colorDefault);
+            for (int i = 0; i < keys.length; i++) {
+                if (selectedItems.contains(keys[i])) {
+                    view.findViewById(options[i][1]).setVisibility(View.VISIBLE);
+                    ((TextView) view.findViewById(options[i][2])).setTextColor(colorSelected);
+                }
+            }
         }
 
         // "Không có" click → clear all
@@ -145,6 +183,67 @@ public class ReminderDialogFragment extends DialogFragment {
         view.findViewById(R.id.reminder_custom).setOnClickListener(v -> {
             showCustomSpinnerDialog();
         });
+    }
+
+    private void setupTimeBasedOptions(View view) {
+        int[][] options = {
+                { R.id.reminder_on_time, R.id.check_on_time, R.id.text_on_time },
+                { R.id.reminder_5_mins, R.id.check_5_mins, R.id.text_5_mins },
+                { R.id.reminder_30_mins, R.id.check_30_mins, R.id.text_30_mins },
+                { R.id.reminder_1_hour, R.id.check_1_hour, R.id.text_1_hour },
+                { R.id.reminder_1_day_time, R.id.check_1_day_time, R.id.text_1_day_time },
+        };
+        String[] keys = { "on_time", "5_mins", "30_mins", "1_hour", "1_day_time" };
+
+        int colorSelected = 0xFF4C6FE0;
+        int colorDefault = 0xFFB0B0B0;
+
+        ImageView checkNone = view.findViewById(R.id.check_none);
+        TextView textNone = view.findViewById(R.id.text_none);
+
+        // Restore pre-selected state
+        if (!selectedItems.isEmpty()) {
+            checkNone.setVisibility(View.GONE);
+            textNone.setTextColor(colorDefault);
+            for (int i = 0; i < keys.length; i++) {
+                if (selectedItems.contains(keys[i])) {
+                    view.findViewById(options[i][1]).setVisibility(View.VISIBLE);
+                    ((TextView) view.findViewById(options[i][2])).setTextColor(colorSelected);
+                }
+            }
+        }
+
+        // "Không có" click → clear all
+        view.findViewById(R.id.reminder_none).setOnClickListener(v -> {
+            selectedItems.clear();
+            checkNone.setVisibility(View.VISIBLE);
+            textNone.setTextColor(colorSelected);
+            for (int[] opt : options) {
+                view.findViewById(opt[1]).setVisibility(View.GONE);
+                ((TextView) view.findViewById(opt[2])).setTextColor(colorDefault);
+            }
+        });
+
+        // Preset clicks → multi-select toggle
+        for (int i = 0; i < options.length; i++) {
+            final String key = keys[i];
+            final ImageView check = view.findViewById(options[i][1]);
+            final TextView text = (TextView) view.findViewById(options[i][2]);
+
+            view.findViewById(options[i][0]).setOnClickListener(v -> {
+                if (selectedItems.contains(key)) {
+                    selectedItems.remove(key);
+                    check.setVisibility(View.GONE);
+                    text.setTextColor(colorDefault);
+                } else {
+                    selectedItems.add(key);
+                    check.setVisibility(View.VISIBLE);
+                    text.setTextColor(colorSelected);
+                    checkNone.setVisibility(View.GONE);
+                    textNone.setTextColor(colorDefault);
+                }
+            });
+        }
     }
 
     /**

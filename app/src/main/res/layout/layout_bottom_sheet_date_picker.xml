@@ -353,46 +353,6 @@
     </LinearLayout>
 
     <!-- Lặp lại -->
-    <LinearLayout
-        android:id="@+id/option_repeat"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="8dp"
-        android:clickable="true"
-        android:focusable="true">
-        <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:src="@drawable/ic_option_repeat"
-            android:scaleType="centerInside" />
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:text="@string/date_option_repeat"
-            android:textColor="@color/main_text_primary"
-            android:textSize="14sp" />
-        <View
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
-        <TextView
-            android:id="@+id/text_repeat_value"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/date_none"
-            android:textColor="@color/main_text_secondary"
-            android:textSize="13sp" />
-        <ImageView
-            android:layout_width="16dp"
-            android:layout_height="16dp"
-            android:src="@drawable/ic_chevron_right"
-            android:layout_marginStart="4dp" />
-    </LinearLayout>
 
     <TextView
         android:id="@+id/btn_clear_date"
