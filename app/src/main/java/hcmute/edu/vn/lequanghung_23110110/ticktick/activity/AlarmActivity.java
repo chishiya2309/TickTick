@@ -64,6 +64,9 @@ public class AlarmActivity extends AppCompatActivity {
         taskId = getIntent().getIntExtra("TASK_ID", -1);
         taskTitle = getIntent().getStringExtra("TASK_TITLE");
 
+        // Xóa thông báo báo thức dư thừa vì Activity đã được mở
+        NotificationHelper.cancelNotification(this, taskId);
+
         setupData();
         startAlarm();
         setupPulseAnimation();
