@@ -731,13 +731,13 @@ public class MainActivity extends AppCompatActivity {
             public void onTaskDateClicked(TaskModel task) {
                 DatePickerBottomSheet datePicker = new DatePickerBottomSheet();
                 datePicker.setPreSelectedDate(task.getDueDateMillis());
-                datePicker.setOnDateSelectedListener((dateTag, dateMillis) -> {
-                    dbHelper.updateTaskDate(task.getId(), dateTag, dateMillis);
+                datePicker.setOnDateSelectedListener((dateTag, dateMillis, reminders) -> {
+                    dbHelper.updateTaskDate(task.getId(), dateTag, dateMillis, reminders);
                     loadTasksForList(currentListId);
                     rescheduleReminders();
                 });
                 datePicker.setOnDateClearedListener(() -> {
-                    dbHelper.updateTaskDate(task.getId(), null, 0);
+                    dbHelper.updateTaskDate(task.getId(), null, 0, new java.util.ArrayList<>());
                     loadTasksForList(currentListId);
                     refreshDrawerBadges();
                     rescheduleReminders();
@@ -755,7 +755,7 @@ public class MainActivity extends AppCompatActivity {
             reminderService.scheduleAllReminders();
         } else {
             Intent intent = new Intent(this, ReminderService.class);
-            startService(intent);
+            androidx.core.content.ContextCompat.startForegroundService(this, intent);
         }
     }
 
@@ -804,14 +804,17 @@ public class MainActivity extends AppCompatActivity {
         final long[] selectedDateMillis = { -1 };
         final int[] selectedHour = { -1 };
         final int[] selectedMinute = { -1 };
+        final java.util.List<String> selectedReminders = new java.util.ArrayList<>();
 
         textCurrentList.setText(dbHelper.getListNameById(currentListId));
 
         Runnable openDatePicker = () -> {
             DatePickerBottomSheet datePicker = new DatePickerBottomSheet();
-            datePicker.setOnDateSelectedListener((dateTag, dateMillis) -> {
+            datePicker.setOnDateSelectedListener((dateTag, dateMillis, reminders) -> {
                 selectedDateTag[0] = dateTag;
                 selectedDateMillis[0] = dateMillis;
+                selectedReminders.clear();
+                if (reminders != null) selectedReminders.addAll(reminders);
                 dateChipText.setText(dateTag);
                 dateChipContainer.setVisibility(View.VISIBLE);
                 actionDate.setVisibility(View.GONE);
@@ -820,12 +823,14 @@ public class MainActivity extends AppCompatActivity {
             datePicker.setOnDateClearedListener(() -> {
                 selectedDateTag[0] = ""; selectedDateMillis[0] = -1;
                 selectedHour[0] = -1; selectedMinute[0] = -1;
+                selectedReminders.clear();
                 dateChipContainer.setVisibility(View.GONE);
                 actionDate.setVisibility(View.VISIBLE);
             });
             datePicker.setOnTimeSelectedListener((h, m) -> { selectedHour[0] = h; selectedMinute[0] = m; });
             if (selectedDateMillis[0] > 0) datePicker.setPreSelectedDate(selectedDateMillis[0]);
             if (selectedHour[0] >= 0) datePicker.setPreSelectedTime(selectedHour[0], selectedMinute[0]);
+            if (!selectedReminders.isEmpty()) datePicker.setPreSelectedReminders(selectedReminders);
             datePicker.show(getSupportFragmentManager(), "date_picker");
         };
 
@@ -849,7 +854,7 @@ public class MainActivity extends AppCompatActivity {
 
             Log.d(TAG, "UI: Click Save. Title=" + title + ", FinalMillis=" + finalDueDate);
             
-            dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate);
+            dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate, selectedReminders);
             
             loadTasksForList(currentListId);
             refreshDrawerBadges();

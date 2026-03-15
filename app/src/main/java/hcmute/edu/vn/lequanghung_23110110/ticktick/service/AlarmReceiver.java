@@ -16,8 +16,10 @@ public class AlarmReceiver extends BroadcastReceiver {
         String taskTitle = intent.getStringExtra("TASK_TITLE");
 
         if (ACTION_SHOW_NOTIFICATION.equals(action)) {
-            // Hiện thông báo thường (trước 15p)
-            NotificationHelper.showNotification(context, taskId, taskTitle);
+            // Hiện thông báo thường (trước 15p hoặc tùy offset)
+            boolean isOnTime = intent.getBooleanExtra("IS_ON_TIME", true);
+            long dueDate = intent.getLongExtra("TASK_DUE_DATE", 0);
+            NotificationHelper.showNotification(context, taskId, taskTitle, isOnTime, dueDate);
         } else if (ACTION_START_ALARM.equals(action)) {
             // Hiển thị thông báo tràn viền (FullScreenIntent) để mở AlarmActivity
             NotificationHelper.showAlarmNotification(context, taskId, taskTitle);

@@ -25,17 +25,17 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
 public class ReminderDialogFragment extends DialogFragment {
 
     public interface OnReminderSelectedListener {
-        void onReminderSelected(List<String> selectedReminders, boolean continuous);
+        void onReminderSelected(List<String> selectedReminders);
     }
 
     private OnReminderSelectedListener listener;
     private String defaultTime = "09:00";
     private long taskDateMillis = -1;
     private boolean hasTimeSelected = false;
+    private List<String> preSelectedItems = new ArrayList<>();
 
     // State
     private final List<String> selectedItems = new ArrayList<>();
-    private boolean isContinuous = false;
 
     public void setOnReminderSelectedListener(OnReminderSelectedListener l) {
         this.listener = l;
@@ -53,11 +53,19 @@ public class ReminderDialogFragment extends DialogFragment {
         this.hasTimeSelected = hasTime;
     }
 
+    public void setPreSelectedItems(List<String> items) {
+        this.preSelectedItems = items != null ? new ArrayList<>(items) : new ArrayList<>();
+    }
+
     @NonNull
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         View view = LayoutInflater.from(getContext())
                 .inflate(R.layout.dialog_reminder, null);
+
+        // Restore state từ lần chọn trước
+        selectedItems.clear();
+        selectedItems.addAll(preSelectedItems);
 
         if (hasTimeSelected) {
             // Ẩn day-based presets
@@ -78,8 +86,6 @@ public class ReminderDialogFragment extends DialogFragment {
         }
         setupCustomButton(view);
 
-        Switch switchContinuous = view.findViewById(R.id.switch_continuous);
-
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setView(view)
                 .create();
@@ -90,9 +96,8 @@ public class ReminderDialogFragment extends DialogFragment {
 
         view.findViewById(R.id.btn_reminder_cancel).setOnClickListener(v -> dismiss());
         view.findViewById(R.id.btn_reminder_ok).setOnClickListener(v -> {
-            isContinuous = switchContinuous.isChecked();
             if (listener != null) {
-                listener.onReminderSelected(new ArrayList<>(selectedItems), isContinuous);
+                listener.onReminderSelected(new ArrayList<>(selectedItems));
             }
             dismiss();
         });
@@ -127,6 +132,18 @@ public class ReminderDialogFragment extends DialogFragment {
         // Set labels
         for (int i = 0; i < options.length; i++) {
             ((TextView) view.findViewById(options[i][2])).setText(labels[i]);
+        }
+
+        // Restore pre-selected state
+        if (!selectedItems.isEmpty()) {
+            checkNone.setVisibility(View.GONE);
+            textNone.setTextColor(colorDefault);
+            for (int i = 0; i < keys.length; i++) {
+                if (selectedItems.contains(keys[i])) {
+                    view.findViewById(options[i][1]).setVisibility(View.VISIBLE);
+                    ((TextView) view.findViewById(options[i][2])).setTextColor(colorSelected);
+                }
+            }
         }
 
         // "Không có" click → clear all
@@ -183,6 +200,18 @@ public class ReminderDialogFragment extends DialogFragment {
 
         ImageView checkNone = view.findViewById(R.id.check_none);
         TextView textNone = view.findViewById(R.id.text_none);
+
+        // Restore pre-selected state
+        if (!selectedItems.isEmpty()) {
+            checkNone.setVisibility(View.GONE);
+            textNone.setTextColor(colorDefault);
+            for (int i = 0; i < keys.length; i++) {
+                if (selectedItems.contains(keys[i])) {
+                    view.findViewById(options[i][1]).setVisibility(View.VISIBLE);
+                    ((TextView) view.findViewById(options[i][2])).setTextColor(colorSelected);
+                }
+            }
+        }
 
         // "Không có" click → clear all
         view.findViewById(R.id.reminder_none).setOnClickListener(v -> {
