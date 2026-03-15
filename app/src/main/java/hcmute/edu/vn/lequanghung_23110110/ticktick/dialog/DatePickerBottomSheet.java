@@ -204,6 +204,8 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
         view.findViewById(R.id.option_reminder).setOnClickListener(v -> {
             ReminderDialogFragment reminderDialog = new ReminderDialogFragment();
 
+            // Truyền trạng thái đã chọn giờ hay chưa
+            reminderDialog.setHasTimeSelected(selectedHour >= 0);
             // Truyền time mặc định (nếu đã chọn giờ)
             if (selectedHour >= 0) {
                 reminderDialog.setDefaultTime(
@@ -227,8 +229,6 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
 
             reminderDialog.show(getChildFragmentManager(), "reminder_dialog");
         });
-        view.findViewById(R.id.option_repeat)
-                .setOnClickListener(v -> Toast.makeText(getContext(), "Đặt lặp lại", Toast.LENGTH_SHORT).show());
 
         // ── NÚT XÓA ──
         view.findViewById(R.id.btn_clear_date).setOnClickListener(v -> {
