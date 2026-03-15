@@ -161,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
             int listId = intent.getIntExtra("EXTRA_LIST_ID", 1);
             int iconResId = intent.getIntExtra("EXTRA_LIST_ICON_RES_ID", 0);
             String emojiStr = intent.getStringExtra("EXTRA_LIST_EMOJI");
-            
+
             // Tìm và setSelected trong drawer
             if (drawerItems != null && drawerAdapter != null) {
                 for (int i = 0; i < drawerItems.size(); i++) {
@@ -172,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             }
-            
+
             loadTasksForList(listId, iconResId, emojiStr);
             return true;
         }
@@ -825,7 +825,7 @@ public class MainActivity extends AppCompatActivity {
         sheetView.findViewById(R.id.btn_submit_task).setOnClickListener(v -> {
             String title = inputTitle.getText().toString().trim();
             if (TextUtils.isEmpty(title)) { inputTitle.setError("Nhập tiêu đề task"); inputTitle.requestFocus(); return; }
-            
+
             // FIX: Gộp giờ phút vào Millis nếu có chọn thời gian
             long finalDueDate = selectedDateMillis[0];
             if (finalDueDate > 0 && selectedHour[0] >= 0) {
@@ -839,9 +839,9 @@ public class MainActivity extends AppCompatActivity {
             }
 
             Log.d(TAG, "UI: Click Save. Title=" + title + ", FinalMillis=" + finalDueDate);
-            
+
             dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate);
-            
+
             loadTasksForList(currentListId);
             rescheduleReminders();
             bottomSheet.dismiss();

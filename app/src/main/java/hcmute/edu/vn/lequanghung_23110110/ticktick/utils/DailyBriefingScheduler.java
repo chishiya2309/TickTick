@@ -1,74 +1,101 @@
 package hcmute.edu.vn.lequanghung_23110110.ticktick.utils;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
+import android.os.Build;
 import android.util.Log;
 
-import androidx.work.Constraints;
-import androidx.work.ExistingPeriodicWorkPolicy;
-import androidx.work.NetworkType;
-import androidx.work.PeriodicWorkRequest;
-import androidx.work.WorkManager;
-
 import java.util.Calendar;
-import java.util.concurrent.TimeUnit;
 
-import hcmute.edu.vn.lequanghung_23110110.ticktick.worker.DailyBriefingWorker;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.service.AlarmReceiver;
 
 /**
- * Utility class để lập lịch Daily Briefing (Báo cáo đầu ngày).
+ * Utility class để lập lịch Daily Briefing sử dụng AlarmManager thay vì WorkManager
  */
 public class DailyBriefingScheduler {
 
     private static final String TAG = "DailyBriefingScheduler";
-    private static final String WORK_NAME = "daily_briefing_work";
-    private static final int TARGET_HOUR = 7;  // 7 giờ sáng
-    private static final int TARGET_MINUTE = 0;
+    private static final int ALARM_REQUEST_CODE = 1001;
+    private static final int TARGET_HOUR = 22;
+    private static final int TARGET_MINUTE = 20;
 
     public static void setupDailyBriefingWork(Context context) {
-        long initialDelay = calculateInitialDelay();
+        Log.d(TAG, "🚀 setupDailyBriefingWork() với AlarmManager");
         
-        Log.d(TAG, "Lập lịch Daily Briefing. Delay ban đầu: " + (initialDelay / 1000 / 60) + " phút");
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) {
+            Log.e(TAG, "❌ AlarmManager không khả dụng");
+            return;
+        }
 
-        Constraints constraints = new Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
-                .setRequiresBatteryNotLow(false)
-                .setRequiresCharging(false)
-                .build();
+        // Tạo Intent cho AlarmReceiver
+        Intent intent = new Intent(context, AlarmReceiver.class);
+        intent.setAction("DAILY_BRIEFING_ALARM");
+        
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context, ALARM_REQUEST_CODE, intent, flags);
 
-        PeriodicWorkRequest dailyBriefingWork = new PeriodicWorkRequest.Builder(
-                DailyBriefingWorker.class,
-                24, TimeUnit.HOURS, // Lặp lại mỗi 24h
-                15, TimeUnit.MINUTES // Flex interval
-        )
-                .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
-                .setConstraints(constraints)
-                .addTag("daily_briefing")
-                .build();
-
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                WORK_NAME,
-                ExistingPeriodicWorkPolicy.UPDATE, // Sử dụng UPDATE thay vì REPLACE để tránh reset delay không cần thiết
-                dailyBriefingWork
-        );
-    }
-
-    private static long calculateInitialDelay() {
-        Calendar currentTime = Calendar.getInstance();
+        // Tính toán thời gian alarm
+        Calendar calendar = Calendar.getInstance();
         Calendar targetTime = Calendar.getInstance();
-
+        
         targetTime.set(Calendar.HOUR_OF_DAY, TARGET_HOUR);
         targetTime.set(Calendar.MINUTE, TARGET_MINUTE);
         targetTime.set(Calendar.SECOND, 0);
         targetTime.set(Calendar.MILLISECOND, 0);
 
-        if (currentTime.after(targetTime)) {
+        // Nếu thời gian đã qua hôm nay, lên lịch cho ngày mai
+        if (calendar.after(targetTime)) {
             targetTime.add(Calendar.DAY_OF_MONTH, 1);
         }
 
-        return targetTime.getTimeInMillis() - currentTime.getTimeInMillis();
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss", java.util.Locale.getDefault());
+        Log.d(TAG, "=== SETUP DAILY BRIEFING ALARM ===");
+        Log.d(TAG, "Thời gian hiện tại: " + sdf.format(calendar.getTime()));
+        Log.d(TAG, "Target time: " + TARGET_HOUR + ":" + TARGET_MINUTE);
+        Log.d(TAG, "Sẽ chạy vào: " + sdf.format(targetTime.getTime()));
+
+        try {
+            // Sử dụng setExactAndAllowWhileIdle để đảm bảo chạy ngay cả khi thiết bị ở chế độ Doze
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, 
+                        targetTime.getTimeInMillis(), pendingIntent);
+            } else {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, 
+                        targetTime.getTimeInMillis(), pendingIntent);
+            }
+            
+            Log.d(TAG, "✅ Đã setup alarm thành công");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Lỗi khi setup alarm: " + e.getMessage(), e);
+        }
+        
+        Log.d(TAG, "=== END SETUP ALARM ===");
     }
 
     public static void cancelDailyBriefingWork(Context context) {
-        WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME);
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            Intent intent = new Intent(context, AlarmReceiver.class);
+            intent.setAction("DAILY_BRIEFING_ALARM");
+            
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                flags |= PendingIntent.FLAG_IMMUTABLE;
+            }
+            
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                    context, ALARM_REQUEST_CODE, intent, flags);
+            
+            alarmManager.cancel(pendingIntent);
+            Log.d(TAG, "✅ Đã hủy alarm");
+        }
     }
 }
