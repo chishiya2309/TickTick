@@ -3,6 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
+        android:id="@+id/action_music"
+        android:icon="@drawable/ic_music_note"
+        android:title="Nhạc chuông"
+        app:showAsAction="ifRoom" />
+
+    <item
         android:id="@+id/action_smart_suggest"
         android:icon="@drawable/ic_sparkle"
         android:title="@string/menu_smart_suggest"
