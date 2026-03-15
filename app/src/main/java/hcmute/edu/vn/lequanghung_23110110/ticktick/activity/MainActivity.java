@@ -105,6 +105,27 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+    private final ActivityResultLauncher<Intent> intentLaunchRingtonePicker =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    android.net.Uri uri = result.getData().getParcelableExtra(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI);
+                    if (uri != null) {
+                        getSharedPreferences("TickTickPrefs", Context.MODE_PRIVATE)
+                                .edit()
+                                .putString("custom_ringtone", uri.toString())
+                                .apply();
+                        Toast.makeText(this, "Đã lưu nhạc chuông mới", Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Người dùng chọn chế độ im lặng
+                        getSharedPreferences("TickTickPrefs", Context.MODE_PRIVATE)
+                                .edit()
+                                .putString("custom_ringtone", "silent")
+                                .apply();
+                        Toast.makeText(this, "Đã tắt nhạc chuông", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -885,6 +906,21 @@ public class MainActivity extends AppCompatActivity {
         int id = item.getItemId();
         if (id == R.id.action_smart_suggest) Toast.makeText(this, "Gợi ý thông minh", Toast.LENGTH_SHORT).show();
         else if (id == R.id.action_more) Toast.makeText(this, "Thêm tùy chọn", Toast.LENGTH_SHORT).show();
+        else if (id == R.id.action_music) {
+            Intent intent = new Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER);
+            intent.putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE, android.media.RingtoneManager.TYPE_ALARM);
+            intent.putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true);
+            intent.putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true);
+            
+            // Lấy ringtone đã lưu từ SharedPreferences để set mặc định cho Picker
+            android.content.SharedPreferences prefs = getSharedPreferences("TickTickPrefs", Context.MODE_PRIVATE);
+            String existingRingtone = prefs.getString("custom_ringtone", null);
+            if (existingRingtone != null) {
+                intent.putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, android.net.Uri.parse(existingRingtone));
+            }
+
+            intentLaunchRingtonePicker.launch(intent);
+        }
         return super.onOptionsItemSelected(item);
     }
 
