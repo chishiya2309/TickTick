@@ -37,6 +37,12 @@ public class ReminderDialogFragment extends DialogFragment {
     // State
     private final List<String> selectedItems = new ArrayList<>();
 
+    // Custom Dynamic UI refs
+    private View dialogView;
+    private View reminderCustomDynamic;
+    private TextView textCustomDynamic;
+    private ImageView checkCustomDynamic;
+
     public void setOnReminderSelectedListener(OnReminderSelectedListener l) {
         this.listener = l;
     }
@@ -60,42 +66,48 @@ public class ReminderDialogFragment extends DialogFragment {
     @NonNull
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        View view = LayoutInflater.from(getContext())
+        dialogView = LayoutInflater.from(getContext())
                 .inflate(R.layout.dialog_reminder, null);
 
         // Restore state từ lần chọn trước
         selectedItems.clear();
         selectedItems.addAll(preSelectedItems);
 
+        // Bind custom dynamic views
+        reminderCustomDynamic = dialogView.findViewById(R.id.reminder_custom_dynamic);
+        textCustomDynamic = dialogView.findViewById(R.id.text_custom_dynamic);
+        checkCustomDynamic = dialogView.findViewById(R.id.check_custom_dynamic);
+
         if (hasTimeSelected) {
             // Ẩn day-based presets
-            view.findViewById(R.id.reminder_on_day).setVisibility(View.GONE);
-            view.findViewById(R.id.reminder_1_day).setVisibility(View.GONE);
-            view.findViewById(R.id.reminder_2_days).setVisibility(View.GONE);
-            view.findViewById(R.id.reminder_3_days).setVisibility(View.GONE);
-            view.findViewById(R.id.reminder_1_week).setVisibility(View.GONE);
+            dialogView.findViewById(R.id.reminder_on_day).setVisibility(View.GONE);
+            dialogView.findViewById(R.id.reminder_1_day).setVisibility(View.GONE);
+            dialogView.findViewById(R.id.reminder_2_days).setVisibility(View.GONE);
+            dialogView.findViewById(R.id.reminder_3_days).setVisibility(View.GONE);
+            dialogView.findViewById(R.id.reminder_1_week).setVisibility(View.GONE);
             // Hiện time-based presets
-            view.findViewById(R.id.reminder_on_time).setVisibility(View.VISIBLE);
-            view.findViewById(R.id.reminder_5_mins).setVisibility(View.VISIBLE);
-            view.findViewById(R.id.reminder_30_mins).setVisibility(View.VISIBLE);
-            view.findViewById(R.id.reminder_1_hour).setVisibility(View.VISIBLE);
-            view.findViewById(R.id.reminder_1_day_time).setVisibility(View.VISIBLE);
-            setupTimeBasedOptions(view);
+            dialogView.findViewById(R.id.reminder_on_time).setVisibility(View.VISIBLE);
+            dialogView.findViewById(R.id.reminder_5_mins).setVisibility(View.VISIBLE);
+            dialogView.findViewById(R.id.reminder_30_mins).setVisibility(View.VISIBLE);
+            dialogView.findViewById(R.id.reminder_1_hour).setVisibility(View.VISIBLE);
+            dialogView.findViewById(R.id.reminder_1_day_time).setVisibility(View.VISIBLE);
+            setupTimeBasedOptions(dialogView);
         } else {
-            setupPresetOptions(view);
+            setupPresetOptions(dialogView);
         }
-        setupCustomButton(view);
+        setupCustomDynamicOption(dialogView);
+        setupCustomButton(dialogView);
 
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                .setView(view)
+                .setView(dialogView)
                 .create();
 
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         }
 
-        view.findViewById(R.id.btn_reminder_cancel).setOnClickListener(v -> dismiss());
-        view.findViewById(R.id.btn_reminder_ok).setOnClickListener(v -> {
+        dialogView.findViewById(R.id.btn_reminder_cancel).setOnClickListener(v -> dismiss());
+        dialogView.findViewById(R.id.btn_reminder_ok).setOnClickListener(v -> {
             if (listener != null) {
                 listener.onReminderSelected(new ArrayList<>(selectedItems));
             }
@@ -117,10 +129,10 @@ public class ReminderDialogFragment extends DialogFragment {
         String[] keys = { "on_day", "1_day", "2_days", "3_days", "1_week" };
         String[] labels = {
                 "Đúng ngày (" + defaultTime + ")",
-                "1 days early (" + defaultTime + ")",
-                "2 days early (" + defaultTime + ")",
-                "3 days early (" + defaultTime + ")",
-                "1 weeks early (" + defaultTime + ")",
+                "Sớm 1 ngày (" + defaultTime + ")",
+                "Sớm 2 ngày (" + defaultTime + ")",
+                "Sớm 3 ngày (" + defaultTime + ")",
+                "Sớm 1 tuần (" + defaultTime + ")",
         };
 
         int colorSelected = 0xFF4C6FE0;
@@ -155,6 +167,7 @@ public class ReminderDialogFragment extends DialogFragment {
                 view.findViewById(opt[1]).setVisibility(View.GONE);
                 ((TextView) view.findViewById(opt[2])).setTextColor(colorDefault);
             }
+            uncheckCustomDynamic();
         });
 
         // Preset clicks → multi-select toggle
@@ -169,6 +182,7 @@ public class ReminderDialogFragment extends DialogFragment {
                     check.setVisibility(View.GONE);
                     text.setTextColor(colorDefault);
                 } else {
+                    if (!isReminderTimeValid(key)) return;
                     selectedItems.add(key);
                     check.setVisibility(View.VISIBLE);
                     text.setTextColor(colorSelected);
@@ -222,6 +236,7 @@ public class ReminderDialogFragment extends DialogFragment {
                 view.findViewById(opt[1]).setVisibility(View.GONE);
                 ((TextView) view.findViewById(opt[2])).setTextColor(colorDefault);
             }
+            uncheckCustomDynamic();
         });
 
         // Preset clicks → multi-select toggle
@@ -236,6 +251,7 @@ public class ReminderDialogFragment extends DialogFragment {
                     check.setVisibility(View.GONE);
                     text.setTextColor(colorDefault);
                 } else {
+                    if (!isReminderTimeValid(key)) return;
                     selectedItems.add(key);
                     check.setVisibility(View.VISIBLE);
                     text.setTextColor(colorSelected);
@@ -246,6 +262,159 @@ public class ReminderDialogFragment extends DialogFragment {
         }
     }
 
+    private void setupCustomDynamicOption(View view) {
+        // Tìm xem có tùy chỉnh nào đang được chọn không
+        String customKey = null;
+        for (String item : selectedItems) {
+            if (item.startsWith("custom:")) {
+                customKey = item;
+                break;
+            }
+        }
+
+        if (customKey != null) {
+            String[] parts = customKey.split(":", 3);
+            if (parts.length >= 3) {
+                // Label format trong custom picker: "Đúng ngày", "1 days early", ...
+                String timeLabel = parts[2]; // time
+                // Replace "early" => "sớm" (nếu có)
+                String displayLabel = parts[1].replace("early", "sớm");
+
+                String displayText = displayLabel;
+                if (!displayLabel.equalsIgnoreCase("Đúng ngày")) {
+                    displayText = displayLabel + " lúc " + timeLabel;
+                } else {
+                    displayText = "Đúng ngày lúc " + timeLabel;
+                }
+
+                reminderCustomDynamic.setVisibility(View.VISIBLE);
+                textCustomDynamic.setText(displayText);
+                textCustomDynamic.setTextColor(0xFF4C6FE0);
+                checkCustomDynamic.setVisibility(View.VISIBLE);
+            }
+        } else {
+            reminderCustomDynamic.setVisibility(View.GONE);
+        }
+
+        // Bấm vào để bỏ chọn
+        reminderCustomDynamic.setOnClickListener(v -> {
+            String toRemove = null;
+            for (String item : selectedItems) {
+                if (item.startsWith("custom:")) {
+                    toRemove = item;
+                    break;
+                }
+            }
+            if (toRemove != null) {
+                selectedItems.remove(toRemove);
+            }
+            uncheckCustomDynamic();
+        });
+    }
+
+    private void uncheckCustomDynamic() {
+        if (textCustomDynamic != null && checkCustomDynamic != null) {
+            textCustomDynamic.setTextColor(0xFFB0B0B0);
+            checkCustomDynamic.setVisibility(View.GONE);
+        }
+    }
+
+    private void uncheckAllPresets() {
+        // "Không có" click clear toàn bộ, code giả lập thao tác click vào nút
+        // reminder_none
+        if (dialogView != null) {
+            View btnNone = dialogView.findViewById(R.id.reminder_none);
+            if (btnNone != null && btnNone.getVisibility() == View.VISIBLE) {
+                btnNone.performClick();
+            }
+        }
+    }
+
+    private boolean isReminderTimeValid(String key) {
+        if (taskDateMillis <= 0) return true;
+
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(taskDateMillis);
+        
+        // Luôn đặt về 0 giây/mili để so sánh chính xác theo phút
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+
+        if (!hasTimeSelected) {
+            try {
+                String[] parts = defaultTime.split(":");
+                cal.set(Calendar.HOUR_OF_DAY, Integer.parseInt(parts[0]));
+                cal.set(Calendar.MINUTE, Integer.parseInt(parts[1]));
+            } catch (Exception e) {}
+        }
+
+        if (key.startsWith("custom:")) {
+            String[] parts = key.split(":", 3);
+            if (parts.length >= 3) {
+                String label = parts[1];
+                String timeStr = parts[2];
+                int offset = 0;
+                try {
+                    String numStr = label.replaceAll("[^0-9]", "");
+                    if (!numStr.isEmpty()) offset = Integer.parseInt(numStr);
+                } catch(Exception e) {}
+
+                if (label.contains("tuần") || label.contains("week")) {
+                    cal.add(Calendar.WEEK_OF_YEAR, -offset);
+                } else {
+                    cal.add(Calendar.DAY_OF_MONTH, -offset);
+                }
+
+                String[] timeParts = timeStr.split(":");
+                if (timeParts.length == 2) {
+                    try {
+                        cal.set(Calendar.HOUR_OF_DAY, Integer.parseInt(timeParts[0]));
+                        cal.set(Calendar.MINUTE, Integer.parseInt(timeParts[1]));
+                    } catch (Exception e) {}
+                }
+            }
+        } else {
+            switch (key) {
+                case "on_day":
+                case "on_time":
+                    break;
+                case "1_day":
+                case "1_day_time":
+                    cal.add(Calendar.DAY_OF_MONTH, -1);
+                    break;
+                case "2_days":
+                    cal.add(Calendar.DAY_OF_MONTH, -2);
+                    break;
+                case "3_days":
+                    cal.add(Calendar.DAY_OF_MONTH, -3);
+                    break;
+                case "1_week":
+                    cal.add(Calendar.WEEK_OF_YEAR, -1);
+                    break;
+                case "5_mins":
+                    cal.add(Calendar.MINUTE, -5);
+                    break;
+                case "30_mins":
+                    cal.add(Calendar.MINUTE, -30);
+                    break;
+                case "1_hour":
+                    cal.add(Calendar.HOUR_OF_DAY, -1);
+                    break;
+            }
+        }
+
+        Calendar now = Calendar.getInstance();
+        now.set(Calendar.SECOND, 0);
+        now.set(Calendar.MILLISECOND, 0);
+
+        if (cal.before(now)) {
+            android.widget.Toast.makeText(getContext(), "Thời gian nhắc nhở không hợp lệ (đã qua)", android.widget.Toast.LENGTH_SHORT).show();
+            return false;
+        }
+
+        return true;
+    }
+
     /**
      * Tùy chỉnh — spinner picker với tabs "Trước ngày" / "Trước tuần"
      */
@@ -254,8 +423,8 @@ public class ReminderDialogFragment extends DialogFragment {
                 .inflate(R.layout.dialog_reminder_custom, null);
 
         // Label options
-        String[] dayLabels = { "Đúng ngày", "1 days early", "2 days early", "3 days early" };
-        String[] weekLabels = { "Đúng ngày", "1 weeks early", "2 weeks early", "3 weeks early" };
+        String[] dayLabels = { "Đúng ngày", "Sớm 1 ngày", "Sớm 2 ngày", "Sớm 3 ngày" };
+        String[] weekLabels = { "Đúng ngày", "Sớm 1 tuần", "Sớm 2 tuần", "Sớm 3 tuần" };
 
         NumberPicker pickerLabel = customView.findViewById(R.id.picker_label);
         NumberPicker pickerHour = customView.findViewById(R.id.picker_hour);
@@ -347,8 +516,35 @@ public class ReminderDialogFragment extends DialogFragment {
             String selectedLabel = labels[pickerLabel.getValue()];
             String time = String.format(Locale.getDefault(), "%02d:%02d",
                     pickerHour.getValue(), pickerMinute.getValue());
-            selectedItems.clear();
-            selectedItems.add("custom:" + selectedLabel + ":" + time);
+            
+            String newCustomKey = "custom:" + selectedLabel + ":" + time;
+            
+            if (!isReminderTimeValid(newCustomKey)) return;
+            
+            // Xóa custom cũ nếu có, NHƯNG giữ nguyên các lựa chọn preset khác
+            List<String> toRemove = new ArrayList<>();
+            for (String item : selectedItems) {
+                if (item.startsWith("custom:")) {
+                    toRemove.add(item);
+                }
+            }
+            selectedItems.removeAll(toRemove);
+            
+            selectedItems.add(newCustomKey);
+
+            // Bỏ chọn nút Không có (vì formClick reminder_none đã chọn lại nó)
+            if (dialogView != null) {
+                ImageView checkNone = dialogView.findViewById(R.id.check_none);
+                TextView textNone = dialogView.findViewById(R.id.text_none);
+                if (checkNone != null) checkNone.setVisibility(View.GONE);
+                if (textNone != null) textNone.setTextColor(0xFFB0B0B0);
+            }
+
+            // Gọi setup lại custom dynamic option
+            if (dialogView != null) {
+                setupCustomDynamicOption(dialogView);
+            }
+
             customDialog.dismiss();
         });
 
@@ -358,34 +554,46 @@ public class ReminderDialogFragment extends DialogFragment {
     private void updateInfoText(TextView infoText, String[] labels,
             NumberPicker pickerLabel, NumberPicker pickerHour,
             NumberPicker pickerMinute, boolean isDayMode) {
-        String time = String.format(Locale.getDefault(), "%02d:%02d",
-                pickerHour.getValue(), pickerMinute.getValue());
+        
+        int h = pickerHour.getValue();
+        int m = pickerMinute.getValue();
+        String timeStr = String.format(Locale.getDefault(), "%02d:%02d", h, m);
 
         if (taskDateMillis > 0) {
             int offset = pickerLabel.getValue();
             Calendar reminderDate = Calendar.getInstance();
             reminderDate.setTimeInMillis(taskDateMillis);
-
+            
+            // Áp dụng offset ngày/tuần
             if (isDayMode) {
                 reminderDate.add(Calendar.DAY_OF_MONTH, -offset);
             } else {
                 reminderDate.add(Calendar.WEEK_OF_YEAR, -offset);
             }
+            
+            // Áp dụng giờ phút từ picker
+            reminderDate.set(Calendar.HOUR_OF_DAY, h);
+            reminderDate.set(Calendar.MINUTE, m);
+            reminderDate.set(Calendar.SECOND, 0);
+            reminderDate.set(Calendar.MILLISECOND, 0);
 
             SimpleDateFormat sdf = new SimpleDateFormat("d 'thg' M, yyyy", Locale.getDefault());
-            String dateStr = sdf.format(reminderDate.getTime());
+            String dateFormatted = sdf.format(reminderDate.getTime());
 
-            // Check nếu đã qua
+            // Check nếu đã qua (so với phút hiện tại)
             Calendar now = Calendar.getInstance();
+            now.set(Calendar.SECOND, 0);
+            now.set(Calendar.MILLISECOND, 0);
+
             if (reminderDate.before(now)) {
                 infoText.setText("Nhắc nhở đã hết hạn");
                 infoText.setTextColor(0xFFEF5350); // đỏ
             } else {
-                infoText.setText("Nhắc nhở lúc " + time + " trong " + dateStr);
+                infoText.setText("Nhắc nhở lúc " + timeStr + " trong " + dateFormatted);
                 infoText.setTextColor(0xFFB0B0B0);
             }
         } else {
-            infoText.setText("Nhắc nhở lúc " + time);
+            infoText.setText("Nhắc nhở lúc " + timeStr);
             infoText.setTextColor(0xFFB0B0B0);
         }
     }

@@ -14,6 +14,8 @@ import androidx.core.app.ServiceCompat;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.NotificationHelper;
+
+import java.util.Calendar;
 import java.util.List;
 
 public class ReminderService extends Service {
@@ -139,6 +141,48 @@ public class ReminderService extends Service {
     private long calculateReminderTime(long dueDateMillis, String reminderStr) {
         if (reminderStr == null)
             return dueDateMillis;
+            
+        if (reminderStr.startsWith("custom:")) {
+            String[] parts = reminderStr.split(":", 3);
+            if (parts.length >= 3) {
+                String label = parts[1];
+                String timeStr = parts[2];
+
+                Calendar cal = Calendar.getInstance();
+                cal.setTimeInMillis(dueDateMillis);
+
+                // Lấy offset số từ chuỗi label (VD: "Sớm 1 ngày" -> 1)
+                int offset = 0;
+                try {
+                    String numStr = label.replaceAll("[^0-9]", "");
+                    if (!numStr.isEmpty()) {
+                        offset = Integer.parseInt(numStr);
+                    }
+                } catch(Exception e) {}
+
+                if (label.contains("tuần") || label.contains("week")) {
+                    cal.add(Calendar.WEEK_OF_YEAR, -offset);
+                } else {
+                    cal.add(Calendar.DAY_OF_MONTH, -offset);
+                }
+
+                // Parse time HH:mm
+                String[] timeParts = timeStr.split(":");
+                if (timeParts.length == 2) {
+                    try {
+                        int h = Integer.parseInt(timeParts[0]);
+                        int m = Integer.parseInt(timeParts[1]);
+                        cal.set(Calendar.HOUR_OF_DAY, h);
+                        cal.set(Calendar.MINUTE, m);
+                        cal.set(Calendar.SECOND, 0);
+                        cal.set(Calendar.MILLISECOND, 0);
+                    } catch (Exception e) {}
+                }
+
+                return cal.getTimeInMillis();
+            }
+        }
+            
         switch (reminderStr) {
             case "Đúng giờ":
             case "on_time":
