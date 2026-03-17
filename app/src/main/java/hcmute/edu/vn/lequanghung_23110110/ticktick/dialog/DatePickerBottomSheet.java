@@ -36,7 +36,7 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
     }
 
     public interface OnDateSelectedListener {
-        void onDateSelected(String dateTag, long dateMillis);
+        void onDateSelected(String dateTag, long dateMillis, java.util.List<String> reminders);
     }
 
     public interface OnDateClearedListener {
@@ -56,6 +56,15 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
     private long preSelectedDateMillis = -1;
     private int preSelectedHour = -1;
     private int preSelectedMinute = -1;
+
+    // Lưu state reminder tạm thời
+    private java.util.List<String> savedReminders = new java.util.ArrayList<>();
+
+    public void setPreSelectedReminders(java.util.List<String> reminders) {
+        if (reminders != null) {
+            this.savedReminders = new java.util.ArrayList<>(reminders);
+        }
+    }
 
     public void setOnDateSelectedListener(OnDateSelectedListener listener) {
         this.dateListener = listener;
@@ -109,6 +118,25 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
         view.findViewById(R.id.date_btn_close).setOnClickListener(v -> dismiss());
         view.findViewById(R.id.date_btn_confirm).setOnClickListener(v -> {
             if (selectedDate != null && dateListener != null) {
+                // Kiểm tra ngày quá khứ
+                Calendar today = Calendar.getInstance();
+                today.set(Calendar.HOUR_OF_DAY, 0);
+                today.set(Calendar.MINUTE, 0);
+                today.set(Calendar.SECOND, 0);
+                today.set(Calendar.MILLISECOND, 0);
+
+                Calendar selDay = (Calendar) selectedDate.clone();
+                selDay.set(Calendar.HOUR_OF_DAY, 0);
+                selDay.set(Calendar.MINUTE, 0);
+                selDay.set(Calendar.SECOND, 0);
+                selDay.set(Calendar.MILLISECOND, 0);
+
+                if (selDay.before(today)) {
+                    Toast.makeText(getContext(),
+                            R.string.date_past_warning, Toast.LENGTH_SHORT).show();
+                    return; // Không dismiss, cho chọn lại
+                }
+
                 SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
                 String dateTag = sdf.format(selectedDate.getTime());
 
@@ -117,7 +145,7 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
                     dateTag += String.format(Locale.getDefault(), " %02d:%02d", selectedHour, selectedMinute);
                 }
 
-                dateListener.onDateSelected(dateTag, selectedDate.getTimeInMillis());
+                dateListener.onDateSelected(dateTag, selectedDate.getTimeInMillis(), new java.util.ArrayList<>(savedReminders));
             }
             dismiss();
         });
@@ -180,11 +208,25 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
             textTimeValue.setText(String.format(Locale.getDefault(), "%02d:%02d", selectedHour, selectedMinute));
             textTimeValue.setTextColor(requireContext().getColor(R.color.main_accent_blue));
         }
-        view.findViewById(R.id.option_time).setOnClickListener(v -> showTimePicker(textTimeValue));
+
         TextView textReminderValue = view.findViewById(R.id.text_reminder_value);
+        if (savedReminders != null && !savedReminders.isEmpty()) {
+            textReminderValue.setText(savedReminders.size() + " lời nhắc");
+            textReminderValue.setTextColor(requireContext().getColor(R.color.main_accent_blue));
+        } else {
+            textReminderValue.setText("Không có");
+            textReminderValue.setTextColor(requireContext().getColor(R.color.main_text_secondary));
+        }
+
+        view.findViewById(R.id.option_time).setOnClickListener(v -> showTimePicker(textTimeValue, textReminderValue));
+        
         view.findViewById(R.id.option_reminder).setOnClickListener(v -> {
             ReminderDialogFragment reminderDialog = new ReminderDialogFragment();
 
+            // Truyền trạng thái đã chọn giờ hay chưa
+            reminderDialog.setHasTimeSelected(selectedHour >= 0);
+            // Truyền state đã lưu từ lần chọn trước
+            reminderDialog.setPreSelectedItems(savedReminders);
             // Truyền time mặc định (nếu đã chọn giờ)
             if (selectedHour >= 0) {
                 reminderDialog.setDefaultTime(
@@ -196,7 +238,8 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
                 reminderDialog.setTaskDateMillis(selectedDate.getTimeInMillis());
             }
 
-            reminderDialog.setOnReminderSelectedListener((reminders, continuous) -> {
+            reminderDialog.setOnReminderSelectedListener((reminders) -> {
+                savedReminders = new java.util.ArrayList<>(reminders);
                 if (reminders.isEmpty()) {
                     textReminderValue.setText("Không có");
                     textReminderValue.setTextColor(requireContext().getColor(R.color.main_text_secondary));
@@ -208,12 +251,11 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
 
             reminderDialog.show(getChildFragmentManager(), "reminder_dialog");
         });
-        view.findViewById(R.id.option_repeat)
-                .setOnClickListener(v -> Toast.makeText(getContext(), "Đặt lặp lại", Toast.LENGTH_SHORT).show());
 
         // ── NÚT XÓA ──
         view.findViewById(R.id.btn_clear_date).setOnClickListener(v -> {
             selectedDate = null;
+            if (savedReminders != null) savedReminders.clear();
             if (clearListener != null) {
                 clearListener.onDateCleared();
             }
@@ -221,7 +263,7 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
         });
     }
 
-    private void showTimePicker(TextView textTimeValue) {
+    private void showTimePicker(TextView textTimeValue, TextView textReminderValue) {
         int hour = selectedHour >= 0 ? selectedHour : Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         int minute = selectedMinute >= 0 ? selectedMinute : Calendar.getInstance().get(Calendar.MINUTE);
 
@@ -240,6 +282,15 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
             String timeStr = String.format(Locale.getDefault(), "%02d:%02d", selectedHour, selectedMinute);
             textTimeValue.setText(timeStr);
             textTimeValue.setTextColor(requireContext().getColor(R.color.main_accent_blue));
+
+            // Tự động chọn reminder_on_time ("on_time") nếu chưa có
+            if (!savedReminders.contains("on_time")) {
+                savedReminders.add("on_time");
+            }
+            if (!savedReminders.isEmpty()) {
+                textReminderValue.setText(savedReminders.size() + " lời nhắc");
+                textReminderValue.setTextColor(requireContext().getColor(R.color.main_accent_blue));
+            }
 
             if (timeListener != null) {
                 timeListener.onTimeSelected(selectedHour, selectedMinute);
@@ -280,7 +331,7 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
         Calendar cal = Calendar.getInstance();
         cal.add(Calendar.DAY_OF_MONTH, daysFromNow);
         if (dateListener != null) {
-            dateListener.onDateSelected(tag, cal.getTimeInMillis());
+            dateListener.onDateSelected(tag, cal.getTimeInMillis(), new java.util.ArrayList<>(savedReminders));
         }
         dismiss();
     }

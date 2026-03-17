@@ -40,10 +40,23 @@ public class AlarmReceiver extends BroadcastReceiver {
         String taskTitle = intent.getStringExtra("TASK_TITLE");
 
         if (ACTION_SHOW_NOTIFICATION.equals(action)) {
-            // Hiện thông báo thường (trước 15p)
-            NotificationHelper.showNotification(context, taskId, taskTitle);
+            // Hiện thông báo thường (trước 15p hoặc tùy offset)
+            boolean isOnTime = intent.getBooleanExtra("IS_ON_TIME", true);
+            long dueDate = intent.getLongExtra("TASK_DUE_DATE", 0);
+            NotificationHelper.showNotification(context, taskId, taskTitle, isOnTime, dueDate);
         } else if (ACTION_START_ALARM.equals(action)) {
-            // Hiển thị thông báo tràn viền (FullScreenIntent) để mở AlarmActivity
+            // Cố gắng mở trực tiếp Activity (sẽ hoạt động nếu app đang mở hoặc có quyền SYSTEM_ALERT_WINDOW)
+            try {
+                Intent fullScreenIntent = new Intent(context, hcmute.edu.vn.lequanghung_23110110.ticktick.activity.AlarmActivity.class);
+                fullScreenIntent.putExtra("TASK_ID", taskId);
+                fullScreenIntent.putExtra("TASK_TITLE", taskTitle);
+                fullScreenIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                context.startActivity(fullScreenIntent);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            // Hiển thị thông báo tràn viền (FullScreenIntent) làm fallback cho Android 10+
             NotificationHelper.showAlarmNotification(context, taskId, taskTitle);
         }
     }

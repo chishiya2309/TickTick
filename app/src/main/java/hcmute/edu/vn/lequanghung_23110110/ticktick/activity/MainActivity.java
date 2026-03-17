@@ -161,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
             int listId = intent.getIntExtra("EXTRA_LIST_ID", 1);
             int iconResId = intent.getIntExtra("EXTRA_LIST_ICON_RES_ID", 0);
             String emojiStr = intent.getStringExtra("EXTRA_LIST_EMOJI");
-
+            
             // Tìm và setSelected trong drawer
             if (drawerItems != null && drawerAdapter != null) {
                 for (int i = 0; i < drawerItems.size(); i++) {
@@ -172,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             }
-
+            
             loadTasksForList(listId, iconResId, emojiStr);
             return true;
         }
@@ -723,13 +723,13 @@ public class MainActivity extends AppCompatActivity {
             public void onTaskDateClicked(TaskModel task) {
                 DatePickerBottomSheet datePicker = new DatePickerBottomSheet();
                 datePicker.setPreSelectedDate(task.getDueDateMillis());
-                datePicker.setOnDateSelectedListener((dateTag, dateMillis) -> {
-                    dbHelper.updateTaskDate(task.getId(), dateTag, dateMillis);
+                datePicker.setOnDateSelectedListener((dateTag, dateMillis, reminders) -> {
+                    dbHelper.updateTaskDate(task.getId(), dateTag, dateMillis, reminders);
                     loadTasksForList(currentListId);
                     rescheduleReminders();
                 });
                 datePicker.setOnDateClearedListener(() -> {
-                    dbHelper.updateTaskDate(task.getId(), null, 0);
+                    dbHelper.updateTaskDate(task.getId(), null, 0, new ArrayList<>());
                     loadTasksForList(currentListId);
                     rescheduleReminders();
                 });
@@ -795,14 +795,16 @@ public class MainActivity extends AppCompatActivity {
         final long[] selectedDateMillis = { -1 };
         final int[] selectedHour = { -1 };
         final int[] selectedMinute = { -1 };
+        final List<String>[] selectedReminders = new List[]{ new ArrayList<>() };
 
         textCurrentList.setText(dbHelper.getListNameById(currentListId));
 
         Runnable openDatePicker = () -> {
             DatePickerBottomSheet datePicker = new DatePickerBottomSheet();
-            datePicker.setOnDateSelectedListener((dateTag, dateMillis) -> {
+            datePicker.setOnDateSelectedListener((dateTag, dateMillis, reminders) -> {
                 selectedDateTag[0] = dateTag;
                 selectedDateMillis[0] = dateMillis;
+                selectedReminders[0] = reminders;
                 dateChipText.setText(dateTag);
                 dateChipContainer.setVisibility(View.VISIBLE);
                 actionDate.setVisibility(View.GONE);
@@ -811,6 +813,7 @@ public class MainActivity extends AppCompatActivity {
             datePicker.setOnDateClearedListener(() -> {
                 selectedDateTag[0] = ""; selectedDateMillis[0] = -1;
                 selectedHour[0] = -1; selectedMinute[0] = -1;
+                selectedReminders[0] = new ArrayList<>();
                 dateChipContainer.setVisibility(View.GONE);
                 actionDate.setVisibility(View.VISIBLE);
             });
@@ -825,7 +828,7 @@ public class MainActivity extends AppCompatActivity {
         sheetView.findViewById(R.id.btn_submit_task).setOnClickListener(v -> {
             String title = inputTitle.getText().toString().trim();
             if (TextUtils.isEmpty(title)) { inputTitle.setError("Nhập tiêu đề task"); inputTitle.requestFocus(); return; }
-
+            
             // FIX: Gộp giờ phút vào Millis nếu có chọn thời gian
             long finalDueDate = selectedDateMillis[0];
             if (finalDueDate > 0 && selectedHour[0] >= 0) {
@@ -840,7 +843,7 @@ public class MainActivity extends AppCompatActivity {
 
             Log.d(TAG, "UI: Click Save. Title=" + title + ", FinalMillis=" + finalDueDate);
 
-            dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate);
+            dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate, selectedReminders[0]);
 
             loadTasksForList(currentListId);
             rescheduleReminders();

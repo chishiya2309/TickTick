@@ -15,6 +15,19 @@
         android:gravity="center_vertical"
         android:paddingHorizontal="16dp">
 
+        <ImageView
+            android:id="@+id/detail_back_button"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:padding="4dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/ic_chevron_left"
+            android:contentDescription="Back"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone"
+            app:tint="@color/main_text_primary"/>
+
         <!-- List Selection -->
         <LinearLayout
             android:id="@+id/detail_list_selector"

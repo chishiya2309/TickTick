@@ -4,14 +4,18 @@ import android.animation.ObjectAnimator;
 import android.animation.PropertyValuesHolder;
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.media.AudioAttributes;
-import android.media.Ringtone;
-import android.media.RingtoneManager;
-import android.net.Uri;
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.TextView;
+import android.content.Intent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -33,7 +37,6 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.NotificationHelper;
 
 public class AlarmActivity extends AppCompatActivity {
 
-    private Ringtone ringtone;
     private Vibrator vibrator;
     private int taskId;
     private String taskTitle;
@@ -60,6 +63,9 @@ public class AlarmActivity extends AppCompatActivity {
         // Lấy dữ liệu Task
         taskId = getIntent().getIntExtra("TASK_ID", -1);
         taskTitle = getIntent().getStringExtra("TASK_TITLE");
+
+        // Xóa thông báo báo thức dư thừa vì Activity đã được mở
+        NotificationHelper.cancelNotification(this, taskId);
 
         setupData();
         startAlarm();
@@ -203,20 +209,9 @@ public class AlarmActivity extends AppCompatActivity {
     }
 
     private void startAlarm() {
-        Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-        if (alarmUri == null) alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
-
-        ringtone = RingtoneManager.getRingtone(this, alarmUri);
-        if (ringtone != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                ringtone.setAudioAttributes(new AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build());
-            }
-            ringtone.play();
-        }
-
+        Intent intent = new Intent(this, hcmute.edu.vn.lequanghung_23110110.ticktick.service.ServiceNhac.class);
+        startService(intent);
+        
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         if (vibrator != null && vibrator.hasVibrator()) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -228,7 +223,9 @@ public class AlarmActivity extends AppCompatActivity {
     }
 
     private void stopAlarm() {
-        if (ringtone != null && ringtone.isPlaying()) ringtone.stop();
+        Intent intent = new Intent(this, hcmute.edu.vn.lequanghung_23110110.ticktick.service.ServiceNhac.class);
+        stopService(intent);
+        
         if (vibrator != null) vibrator.cancel();
     }
 
