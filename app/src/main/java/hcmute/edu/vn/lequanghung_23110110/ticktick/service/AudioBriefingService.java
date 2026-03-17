@@ -15,21 +15,16 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 
-/**
- * Service xử lý Audio Daily Briefing theo kiến trúc "1 Service - 2 Nhiệm vụ"
- * - ACTION_DISMISS: Hủy thông báo và dừng service
- * - ACTION_LISTEN: Chạy TTS để đọc danh sách công việc
- */
 public class AudioBriefingService extends Service implements TextToSpeech.OnInitListener {
 
     public static final String ACTION_LISTEN = "ACTION_LISTEN";
@@ -46,15 +41,8 @@ public class AudioBriefingService extends Service implements TextToSpeech.OnInit
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.d("AudioBriefingService", "Service được khởi tạo");
-        
-        // Khởi tạo TextToSpeech với ngôn ngữ Tiếng Việt
         textToSpeech = new TextToSpeech(this, this);
-        
-        // Khởi tạo ExecutorService cho background thread
         executorService = Executors.newSingleThreadExecutor();
-        
-        // Tạo notification channel cho TTS foreground service
         createTtsNotificationChannel();
     }
 
@@ -62,200 +50,141 @@ public class AudioBriefingService extends Service implements TextToSpeech.OnInit
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && intent.getAction() != null) {
             String action = intent.getAction();
-            Log.d("AudioBriefingService", "Nhận action: " + action);
-
             if (action.equals(ACTION_DISMISS)) {
                 handleDismissAction(intent);
             } else if (action.equals(ACTION_LISTEN)) {
                 handleListenAction();
             }
         }
-
-        // Return START_NOT_STICKY: Nếu hệ thống kill service, không tự động restart
         return START_NOT_STICKY;
     }
 
-    /**
-     * Xử lý ACTION_DISMISS: Hủy thông báo và dừng service ngay lập tức
-     */
     private void handleDismissAction(Intent intent) {
-        Log.d("AudioBriefingService", "Xử lý ACTION_DISMISS");
-        
-        // Lấy notification ID và hủy thông báo
         int notiId = intent.getIntExtra("NOTIFICATION_ID", -1);
         if (notiId != -1) {
             NotificationManagerCompat.from(this).cancel(notiId);
-            Log.d("AudioBriefingService", "Đã hủy notification ID: " + notiId);
         }
-        
-        // Dừng service ngay lập tức
         stopSelf();
     }
 
-    /**
-     * Xử lý ACTION_LISTEN: Chạy foreground service và đọc danh sách công việc
-     */
     private void handleListenAction() {
-        Log.d("AudioBriefingService", "Xử lý ACTION_LISTEN");
-        
-        // BẮT BUỘC gọi startForeground() ngay lập tức để tránh ForegroundServiceDidNotStartInTimeException
         startForeground(TTS_NOTIFICATION_ID, createTtsNotification());
-        
-        // Chạy việc query database và TTS trên background thread để tránh ANR
         executorService.execute(this::performTtsBriefing);
     }
 
-    /**
-     * Thực hiện việc đọc briefing trên background thread
-     */
     private void performTtsBriefing() {
         try {
-            Log.d("AudioBriefingService", "Bắt đầu thực hiện TTS briefing");
-            
-            // Giả lập việc query database (sleep 1s như yêu cầu)
-            Thread.sleep(1000);
-            
-            // Lấy danh sách task từ database
+            // Đợi 1 chút để TTS khởi tạo (nếu cần)
+            int retryCount = 0;
+            while (!isTtsInitialized && retryCount < 10) {
+                Thread.sleep(500);
+                retryCount++;
+            }
+
             TaskDatabaseHelper dbHelper = TaskDatabaseHelper.getInstance(this);
             
-            // Lấy tasks hôm nay và quá hạn
-            long currentTime = System.currentTimeMillis();
-            long startOfDay = currentTime - (currentTime % (24 * 60 * 60 * 1000));
-            long endOfDay = startOfDay + (24 * 60 * 60 * 1000) - 1;
+            // Tính toán khoảng thời gian Hôm nay (00:00:00 - 23:59:59) theo Local Time
+            Calendar cal = Calendar.getInstance();
+            cal.set(Calendar.HOUR_OF_DAY, 0);
+            cal.set(Calendar.MINUTE, 0);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+            long startOfToday = cal.getTimeInMillis();
             
-            List<TaskModel> todayTasks = dbHelper.getTodayAndOverdueTasks(startOfDay, endOfDay);
+            cal.set(Calendar.HOUR_OF_DAY, 23);
+            cal.set(Calendar.MINUTE, 59);
+            cal.set(Calendar.SECOND, 59);
+            long endOfToday = cal.getTimeInMillis();
             
-            // Tạo nội dung để đọc
-            String briefingText = createBriefingText(todayTasks);
+            // YÊU CẦU 1: Lấy chính xác task hôm nay
+            List<TaskModel> todayTasks = dbHelper.getStrictlyTodayTasks(startOfToday, endOfToday);
             
-            // Chờ TTS khởi tạo xong rồi mới đọc
+            // YÊU CẦU 2: Văn nói hóa nội dung
+            String briefingText = buildFluentBriefingText(todayTasks);
+            
             if (isTtsInitialized && textToSpeech != null) {
                 speakBriefing(briefingText);
             } else {
-                Log.w("AudioBriefingService", "TTS chưa được khởi tạo");
+                Log.e("AudioBriefingService", "TTS not ready to speak");
                 stopSelf();
             }
             
-        } catch (InterruptedException e) {
-            Log.e("AudioBriefingService", "Thread bị gián đoạn: " + e.getMessage());
-            stopSelf();
         } catch (Exception e) {
-            Log.e("AudioBriefingService", "Lỗi khi thực hiện TTS briefing: " + e.getMessage());
+            Log.e("AudioBriefingService", "Execution error: " + e.getMessage());
             stopSelf();
         }
     }
 
     /**
-     * Tạo nội dung briefing từ danh sách tasks
+     * YÊU CẦU 2: Xử lý chuỗi văn nói tự nhiên (Tiếng Anh)
      */
-    private String createBriefingText(List<TaskModel> tasks) {
-        StringBuilder briefing = new StringBuilder();
-        briefing.append("Chào buổi sáng! ");
-        
-        if (tasks.isEmpty()) {
-            briefing.append("Hôm nay bạn không có công việc nào cần làm. Chúc bạn một ngày tuyệt vời!");
-        } else {
-            briefing.append("Hôm nay bạn có ").append(tasks.size()).append(" công việc cần hoàn thành. ");
-            
-            // Đọc tối đa 5 task đầu tiên để tránh quá dài
-            int maxTasks = Math.min(tasks.size(), 5);
-            for (int i = 0; i < maxTasks; i++) {
-                TaskModel task = tasks.get(i);
-                briefing.append("Thứ ").append(i + 1).append(": ").append(task.getTitle()).append(". ");
-            }
-            
-            if (tasks.size() > 5) {
-                briefing.append("Và còn ").append(tasks.size() - 5).append(" công việc khác. ");
-            }
-            
-            briefing.append("Chúc bạn một ngày làm việc hiệu quả!");
+    private String buildFluentBriefingText(List<TaskModel> tasks) {
+        if (tasks == null || tasks.isEmpty()) {
+            return "Hello. You have no tasks for today. Enjoy your relaxing day!";
         }
-        
-        return briefing.toString();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Hello. ");
+        sb.append("You have ").append(tasks.size()).append(" tasks to complete today. ");
+
+        String[] ordinals = {"first", "second", "third", "fourth", "fifth", 
+                             "sixth", "seventh", "eighth", "ninth", "tenth"};
+
+        for (int i = 0; i < tasks.size(); i++) {
+            String title = tasks.get(i).getTitle();
+            String label = (i < ordinals.length) ? ordinals[i] : ("number " + (i + 1));
+            
+            // Thêm dấu phẩy sau 'is' và dấu chấm kết thúc để ngắt nghỉ tự nhiên
+            sb.append("Task ").append(label).append(" is, ")
+              .append(title).append(". ");
+        }
+
+        sb.append("Have a productive day!");
+        return sb.toString();
     }
 
-    /**
-     * Sử dụng TTS để đọc briefing
-     */
     private void speakBriefing(String text) {
-        Log.d("AudioBriefingService", "Bắt đầu đọc: " + text);
-        
-        // Cài đặt UtteranceProgressListener để tự động dừng service khi đọc xong
         textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-            @Override
-            public void onStart(String utteranceId) {
-                Log.d("AudioBriefingService", "TTS bắt đầu đọc");
-            }
-
-            @Override
-            public void onDone(String utteranceId) {
-                Log.d("AudioBriefingService", "TTS đọc xong, dừng service");
-                stopSelf(); // Tự động dừng service khi đọc xong
-            }
-
-            @Override
-            public void onError(String utteranceId) {
-                Log.e("AudioBriefingService", "TTS gặp lỗi");
-                stopSelf();
-            }
+            @Override public void onStart(String utteranceId) {}
+            @Override public void onDone(String utteranceId) { stopSelf(); }
+            @Override public void onError(String utteranceId) { stopSelf(); }
         });
 
-        // Tạo params cho TTS
         HashMap<String, String> params = new HashMap<>();
         params.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, UTTERANCE_ID);
-        
-        // Bắt đầu đọc
         textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, params);
     }
 
     @Override
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
-            // Cài đặt ngôn ngữ Tiếng Việt
-            int result = textToSpeech.setLanguage(new Locale("vi", "VN"));
-            
+            // YÊU CẦU 3: Set ngôn ngữ Tiếng Anh và Speech Rate
+            int result = textToSpeech.setLanguage(Locale.US);
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.w("AudioBriefingService", "Tiếng Việt không được hỗ trợ, sử dụng ngôn ngữ mặc định");
-                textToSpeech.setLanguage(Locale.getDefault());
+                textToSpeech.setLanguage(Locale.ENGLISH);
             }
             
-            // Cài đặt tốc độ đọc
-            textToSpeech.setSpeechRate(0.9f);
-            
+            // Tốc độ đọc 0.85f cho rõ ràng
+            textToSpeech.setSpeechRate(0.85f);
             isTtsInitialized = true;
-            Log.d("AudioBriefingService", "TTS đã được khởi tạo thành công");
         } else {
-            Log.e("AudioBriefingService", "Khởi tạo TTS thất bại");
             isTtsInitialized = false;
         }
     }
 
-    /**
-     * Tạo notification channel cho TTS foreground service
-     */
     private void createTtsNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    TTS_CHANNEL_ID,
-                    "Audio Briefing TTS",
-                    NotificationManager.IMPORTANCE_LOW
-            );
-            channel.setDescription("Channel for Audio Briefing TTS service");
+            NotificationChannel channel = new NotificationChannel(TTS_CHANNEL_ID, "Audio Briefing", NotificationManager.IMPORTANCE_LOW);
             NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) {
-                manager.createNotificationChannel(channel);
-            }
+            if (manager != null) manager.createNotificationChannel(channel);
         }
     }
 
-    /**
-     * Tạo notification cho TTS foreground service
-     */
     private Notification createTtsNotification() {
         return new NotificationCompat.Builder(this, TTS_CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-                .setContentTitle("🎧 Trợ lý đang đọc...")
-                .setContentText("Đang đọc lịch trình công việc hôm nay")
+                .setContentTitle("🎧 Assistant is speaking...")
+                .setContentText("Preparing your task list for today")
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)
                 .build();
@@ -264,24 +193,12 @@ public class AudioBriefingService extends Service implements TextToSpeech.OnInit
     @Override
     public void onDestroy() {
         super.onDestroy();
-        Log.d("AudioBriefingService", "Service bị hủy");
-        
-        // Dừng và giải phóng TTS để tránh memory leak
         if (textToSpeech != null) {
             textToSpeech.stop();
             textToSpeech.shutdown();
-            textToSpeech = null;
         }
-        
-        // Shutdown executor service
-        if (executorService != null && !executorService.isShutdown()) {
-            executorService.shutdown();
-        }
+        if (executorService != null) executorService.shutdown();
     }
 
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null; // Không sử dụng Bound Service
-    }
+    @Nullable @Override public IBinder onBind(Intent intent) { return null; }
 }
