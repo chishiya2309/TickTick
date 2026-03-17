@@ -12,7 +12,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.activity.AlarmActivity;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.activity.MainActivity;
 
 public class NotificationHelper {
-    public static final String CHANNEL_ID = "task_reminder_channel_v2";
+    public static final String CHANNEL_ID = "task_reminder_channel_v3";
     public static final String ALARM_CHANNEL_ID = "task_alarm_channel";
     public static final String SERVICE_CHANNEL_ID = "task_service_channel";
     public static final String CHANNEL_NAME = "Task Reminders";
@@ -32,7 +32,7 @@ public class NotificationHelper {
 
             // Set âm thanh custom
             android.net.Uri soundUri = android.net.Uri
-                    .parse("android.resource://" + context.getPackageName() + "/" + R.raw.custom_notification);
+                    .parse("android.resource://" + context.getPackageName() + "/raw/custom_notification");
             android.media.AudioAttributes audioAttributes = new android.media.AudioAttributes.Builder()
                     .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
@@ -80,7 +80,7 @@ public class NotificationHelper {
         }
 
         android.net.Uri soundUri = android.net.Uri
-                .parse("android.resource://" + context.getPackageName() + "/" + R.raw.custom_notification);
+                .parse("android.resource://" + context.getPackageName() + "/raw/custom_notification");
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_today)

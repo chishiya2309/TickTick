@@ -308,6 +308,32 @@
         android:layout_marginTop="4dp"
         android:layout_marginBottom="4dp" />
 
+    <!-- Mục Tùy chỉnh (Động) - ẩn mặc định, chỉ hiện khi có custom reminder -->
+    <LinearLayout
+        android:id="@+id/reminder_custom_dynamic"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/text_custom_dynamic"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Tùy chỉnh động"
+            android:textColor="#B0B0B0"
+            android:textSize="15sp" />
+        <ImageView
+            android:id="@+id/check_custom_dynamic"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_check_blue"
+            android:visibility="gone" />
+    </LinearLayout>
+
     <!-- Tùy chỉnh → mở custom spinner -->
     <LinearLayout
         android:id="@+id/reminder_custom"

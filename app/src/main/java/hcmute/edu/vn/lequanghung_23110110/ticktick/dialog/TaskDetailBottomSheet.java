@@ -59,7 +59,50 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
             BottomSheetDialog d = (BottomSheetDialog) dialogInterface;
             View bottomSheet = d.findViewById(com.google.android.material.R.id.design_bottom_sheet);
             if (bottomSheet != null) {
-                BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
+                BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(bottomSheet);
+                
+                // Cần set height của bottom sheet container là MATCH_PARENT để cho phép vuốt lên full screen
+                ViewGroup.LayoutParams layoutParams = bottomSheet.getLayoutParams();
+                if (layoutParams != null) {
+                    layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT;
+                    bottomSheet.setLayoutParams(layoutParams);
+                }
+
+                // Set peek height to 50% of screen height for Figure 1
+                int screenHeight = getResources().getDisplayMetrics().heightPixels;
+                behavior.setPeekHeight(screenHeight / 2);
+                behavior.setSkipCollapsed(false); // Enable collapsed state
+                
+                // Start at peek height (collapsed)
+                behavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+                
+                behavior.addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
+                    @Override
+                    public void onStateChanged(@NonNull View bottomSheet, int newState) {
+                        View backBtn = getView() != null ? getView().findViewById(R.id.detail_back_button) : null;
+                        if (backBtn != null) {
+                            if (newState == BottomSheetBehavior.STATE_EXPANDED) {
+                                backBtn.setVisibility(View.VISIBLE);
+                            } else {
+                                backBtn.setVisibility(View.GONE);
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onSlide(@NonNull View bottomSheet, float slideOffset) {
+                        // Optional: Fade in the back button based on slideOffset
+                        View backBtn = getView() != null ? getView().findViewById(R.id.detail_back_button) : null;
+                        if (backBtn != null) {
+                            if (slideOffset > 0.8f) {
+                                backBtn.setVisibility(View.VISIBLE);
+                                backBtn.setAlpha((slideOffset - 0.8f) * 5f);
+                            } else if (slideOffset < 0.8f) {
+                                backBtn.setVisibility(View.GONE);
+                            }
+                        }
+                    }
+                });
             }
         });
         return dialog;
@@ -136,10 +179,16 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
             }
         });
 
-        // Add dismiss listener or bottom sheet close listener to save title/description
-        // changes
+        // Save modifications when the dialog is dismissed
         // Since sqlite database for TickTick doesn't have a description column, we only
         // save title.
+        
+        // Back Button
+        ImageView backButton = view.findViewById(R.id.detail_back_button);
+        backButton.setOnClickListener(v -> {
+            // "về màn hình activity_main" -> Dismiss
+            dismiss();
+        });
     }
 
     @Override
