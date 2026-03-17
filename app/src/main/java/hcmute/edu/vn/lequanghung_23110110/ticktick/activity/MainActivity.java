@@ -70,6 +70,7 @@ import android.text.TextUtils;
 import android.widget.EditText;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.DailyBriefingScheduler;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.NotificationHelper;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -732,6 +733,12 @@ public class MainActivity extends AppCompatActivity {
             }
             @Override
             public void onTaskDeleteClicked(TaskModel task) {
+                // Hủy thông báo và báo thức trước khi xóa
+                NotificationHelper.cancelNotification(MainActivity.this, task.getId());
+                if (isBound && reminderService != null) {
+                    reminderService.cancelTaskReminder(task.getId());
+                }
+                
                 dbHelper.deleteTask(task.getId());
                 loadTasksForList(currentListId);
                 refreshDrawerBadges();
