@@ -7,6 +7,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 public class SessionManager {
+    public static final String OWNER_TYPE_USER = "user";
+    public static final String OWNER_TYPE_GUEST = "guest";
+    public static final String OWNER_ID_GUEST_LOCAL = "guest_local";
+
     public enum SessionType {
         USER, GUEST, NONE
     }
@@ -73,4 +77,20 @@ public class SessionManager {
     @Nullable public String getUserEmail() { return prefs.getString(KEY_USER_EMAIL, null); }
     @Nullable public String getUserName() { return prefs.getString(KEY_USER_NAME, null); }
     @Nullable public String getUserAvatarUrl() { return prefs.getString(KEY_USER_AVATAR_URL, null); }
+
+    @NonNull
+    public String getOwnerType() {
+        return getSessionType() == SessionType.USER ? OWNER_TYPE_USER : OWNER_TYPE_GUEST;
+    }
+
+    @NonNull
+    public String getOwnerId() {
+        if (getSessionType() == SessionType.USER) {
+            String uid = getUserUid();
+            if (uid != null && !uid.trim().isEmpty()) {
+                return uid;
+            }
+        }
+        return OWNER_ID_GUEST_LOCAL;
+    }
 }
