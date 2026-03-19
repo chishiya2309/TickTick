@@ -3,7 +3,6 @@ package hcmute.edu.vn.lequanghung_23110110.ticktick.activity;
 import android.content.Intent;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
-import androidx.credentials.ClearCredentialStateRequest;
 import androidx.credentials.Credential;
 import androidx.credentials.CredentialManager;
 import android.os.Bundle;
@@ -15,7 +14,6 @@ import androidx.credentials.CredentialManagerCallback;
 import androidx.credentials.CustomCredential;
 import androidx.credentials.GetCredentialRequest;
 import androidx.credentials.GetCredentialResponse;
-import androidx.credentials.exceptions.ClearCredentialException;
 import androidx.credentials.exceptions.GetCredentialException;
 import androidx.credentials.exceptions.NoCredentialException;
 
@@ -26,7 +24,9 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.GoogleAuthProvider;
 
 import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.NetworkUtils;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SessionManager;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SyncManager;
 
 public class LoginActivity extends AppCompatActivity {
     private static final String TAG = "LoginActivity";
@@ -43,6 +43,11 @@ public class LoginActivity extends AppCompatActivity {
         firebaseAuth = FirebaseAuth.getInstance();
         credentialManager = CredentialManager.create(this);
         sessionManager = new SessionManager(this);
+
+        if (sessionManager.getSessionType() != SessionManager.SessionType.NONE) {
+            navigateToMain();
+            return;
+        }
 
         findViewById(R.id.btn_google_sign_in).setOnClickListener(v -> signInWithGoogle());
         findViewById(R.id.btn_guest_mode).setOnClickListener(v -> continueAsGuest());
@@ -151,6 +156,13 @@ public class LoginActivity extends AppCompatActivity {
                     ? firebaseAuth.getCurrentUser().getPhotoUrl().toString()
                     : null;
             sessionManager.setUserSession(uid, email, displayName, photoUrl);
+
+            if (NetworkUtils.isOnWifi(this)) {
+                SyncManager.syncNow(this, "login_success_wifi");
+            } else {
+                Log.d(TAG, "Skip immediate cloud sync because active network is not Wi-Fi");
+            }
+
             navigateToMain();
         });
     }
@@ -165,26 +177,5 @@ public class LoginActivity extends AppCompatActivity {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
-    }
-
-    // Gọi khi logout để đổi account sạch hơn
-    private void clearCredentialStateOnLogout() {
-        credentialManager.clearCredentialStateAsync(
-                new ClearCredentialStateRequest(),
-                null,
-                ContextCompat.getMainExecutor(this),
-                new CredentialManagerCallback<Void, ClearCredentialException>() {
-                    @Override
-                    public void onResult(Void result) {
-                        Log.d(TAG, "Credential state cleared");
-                    }
-
-                    @Override
-                    public void onError(@NonNull ClearCredentialException e) {
-                        Log.w(TAG, "Clear credential state failed", e);
-                    }
-
-                }
-        );
     }
 }
