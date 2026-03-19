@@ -12,6 +12,7 @@
 
     <!-- Drawer -->
     <string name="drawer_user_name">Hung Le</string>
+    <string name="drawer_guest_name">Guest</string>
     <string name="drawer_today">Hôm nay</string>
     <string name="drawer_inbox">Hộp thư đến</string>
     <string name="drawer_calendar_subscribed">Đã đăng ký Lịch</string>

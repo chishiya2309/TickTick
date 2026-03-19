@@ -49,10 +49,10 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void signInWithGoogle() {
-        requestGoogleCredential(true);
+        requestGoogleCredential();
     }
 
-    private void requestGoogleCredential(boolean authorizedAccountsOnly) {
+    private void requestGoogleCredential() {
         String webClientId = resolveWebClientId();
         if (webClientId == null) {
             Log.e(TAG, "Missing default_web_client_id. Check google-services.json OAuth client config.");
@@ -62,7 +62,8 @@ public class LoginActivity extends AppCompatActivity {
 
         GetGoogleIdOption googleIdOption = new GetGoogleIdOption.Builder()
                 .setServerClientId(webClientId)
-                .setFilterByAuthorizedAccounts(authorizedAccountsOnly)
+                // Always show account chooser (all Google accounts on the device)
+                .setFilterByAuthorizedAccounts(false)
                 .setAutoSelectEnabled(false)
                 .build();
 
@@ -84,11 +85,6 @@ public class LoginActivity extends AppCompatActivity {
                     @Override
                     public void onError(@NonNull GetCredentialException e) {
                         if (e instanceof NoCredentialException) {
-                            if (authorizedAccountsOnly) {
-                                // Fallback to account chooser when there is no previously authorized account.
-                                requestGoogleCredential(false);
-                                return;
-                            }
                             Log.w(TAG, "No Google credential available", e);
                             Toast.makeText(
                                     LoginActivity.this,
@@ -151,7 +147,10 @@ public class LoginActivity extends AppCompatActivity {
             String uid = firebaseAuth.getCurrentUser().getUid();
             String email = firebaseAuth.getCurrentUser().getEmail();
             String displayName = firebaseAuth.getCurrentUser().getDisplayName();
-            sessionManager.setUserSession(uid, email, displayName);
+            String photoUrl = firebaseAuth.getCurrentUser().getPhotoUrl() != null
+                    ? firebaseAuth.getCurrentUser().getPhotoUrl().toString()
+                    : null;
+            sessionManager.setUserSession(uid, email, displayName, photoUrl);
             navigateToMain();
         });
     }

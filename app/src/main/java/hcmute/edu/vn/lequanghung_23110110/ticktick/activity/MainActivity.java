@@ -42,8 +42,15 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.ColorDrawable;
 import android.widget.PopupWindow;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -71,6 +78,14 @@ import android.widget.EditText;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.DailyBriefingScheduler;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.NotificationHelper;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SessionManager;
+
+import androidx.credentials.ClearCredentialStateRequest;
+import androidx.credentials.CredentialManager;
+import androidx.credentials.exceptions.ClearCredentialException;
+import androidx.credentials.CredentialManagerCallback;
+import com.google.firebase.auth.FirebaseAuth;
+import androidx.annotation.NonNull;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -95,6 +110,7 @@ public class MainActivity extends AppCompatActivity {
 
     private ReminderService reminderService;
     private boolean isBound = false;
+    private final ExecutorService avatarLoaderExecutor = Executors.newSingleThreadExecutor();
 
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
@@ -539,6 +555,10 @@ public class MainActivity extends AppCompatActivity {
         RecyclerView drawerRecyclerView = findViewById(R.id.drawer_recycler_view);
         drawerRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 
+        TextView drawerUserNameView = findViewById(R.id.drawer_user_name);
+        ImageView drawerAvatarView = findViewById(R.id.drawer_avatar);
+        bindDrawerUserProfile(drawerUserNameView, drawerAvatarView);
+
         pinnedRecyclerView = findViewById(R.id.drawer_pinned_recycler_view);
         pinnedRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
 
@@ -625,6 +645,61 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.drawer_btn_add).setOnClickListener(this::showAddMenuPopup);
         findViewById(R.id.drawer_btn_filter).setOnClickListener(v -> Toast.makeText(this, "Bộ lọc", Toast.LENGTH_SHORT).show());
         refreshDrawerBadges();
+    }
+
+    private void bindDrawerUserProfile(TextView drawerUserNameView, ImageView drawerAvatarView) {
+        SessionManager sessionManager = new SessionManager(this);
+        SessionManager.SessionType sessionType = sessionManager.getSessionType();
+
+        if (sessionType == SessionManager.SessionType.USER) {
+            String displayName = sessionManager.getUserName();
+            drawerUserNameView.setText(TextUtils.isEmpty(displayName)
+                    ? getString(R.string.drawer_user_name)
+                    : displayName);
+
+            String avatarUrl = sessionManager.getUserAvatarUrl();
+            if (!TextUtils.isEmpty(avatarUrl)) {
+                loadDrawerAvatar(drawerAvatarView, avatarUrl);
+            } else {
+                drawerAvatarView.setImageResource(R.drawable.avatar);
+            }
+            return;
+        }
+
+        if (sessionType == SessionManager.SessionType.GUEST) {
+            drawerUserNameView.setText(R.string.drawer_guest_name);
+        } else {
+            drawerUserNameView.setText(R.string.drawer_user_name);
+        }
+        drawerAvatarView.setImageResource(R.drawable.avatar);
+    }
+
+    private void loadDrawerAvatar(ImageView drawerAvatarView, String avatarUrl) {
+        drawerAvatarView.setImageResource(R.drawable.avatar);
+        avatarLoaderExecutor.execute(() -> {
+            HttpURLConnection connection = null;
+            try {
+                URL url = new URL(avatarUrl);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setConnectTimeout(7000);
+                connection.setReadTimeout(7000);
+                connection.setDoInput(true);
+                connection.connect();
+
+                try (InputStream inputStream = connection.getInputStream()) {
+                    Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                    if (bitmap != null) {
+                        runOnUiThread(() -> drawerAvatarView.setImageBitmap(bitmap));
+                    }
+                }
+            } catch (Exception ex) {
+                Log.w(TAG, "Failed to load drawer avatar", ex);
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+            }
+        });
     }
 
     private List<DrawerMenuItem> buildDrawerMenuItems() {
@@ -928,6 +1003,10 @@ public class MainActivity extends AppCompatActivity {
         int id = item.getItemId();
         if (id == R.id.action_smart_suggest) Toast.makeText(this, "Gợi ý thông minh", Toast.LENGTH_SHORT).show();
         else if (id == R.id.action_more) Toast.makeText(this, "Thêm tùy chọn", Toast.LENGTH_SHORT).show();
+        else if (id == R.id.action_logout) {
+            handleLogout();
+            return true;
+        }
         else if (id == R.id.action_music) {
             Intent intent = new Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER);
             intent.putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE, android.media.RingtoneManager.TYPE_ALARM);
@@ -1003,9 +1082,66 @@ public class MainActivity extends AppCompatActivity {
     };
     @Override protected void onStart() { super.onStart(); bindService(new Intent(this, ReminderService.class), connection, Context.BIND_AUTO_CREATE); }
     @Override protected void onStop() { super.onStop(); if (isBound) { unbindService(connection); isBound = false; } }
+    @Override protected void onDestroy() { super.onDestroy(); avatarLoaderExecutor.shutdownNow(); }
     @Override protected void onResume() { super.onResume(); if (getIntent().hasExtra("EXTRA_TASK_ID")) { int taskId = getIntent().getIntExtra("EXTRA_TASK_ID", -1); getIntent().removeExtra("EXTRA_TASK_ID"); if (taskId != -1) showTaskDetailById(taskId); } }
     private void showTaskDetailById(int taskId) {
         TaskModel task = dbHelper.getTaskById(taskId);
         if (task != null) new TaskDetailBottomSheet(task).show(getSupportFragmentManager(), "TaskDetailBottomSheet");
     }
+
+    private void handleLogout() {
+        // Hiển thị dialog xác nhận
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Đăng xuất")
+                .setMessage("Bạn có chắc chắn muốn đăng xuất?")
+                .setNegativeButton("Hủy", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Đăng xuất", (dialog, which) -> {
+                    performLogout();
+                })
+                .show();
+    }
+
+    private void performLogout() {
+        try {
+            // 1. Sign out Firebase
+            FirebaseAuth.getInstance().signOut();
+
+            // 2. Clear credential state từ CredentialManager
+            CredentialManager credentialManager = CredentialManager.create(this);
+            credentialManager.clearCredentialStateAsync(
+                    new ClearCredentialStateRequest(),
+                    null,
+                    ContextCompat.getMainExecutor(this),
+                    new CredentialManagerCallback<Void, ClearCredentialException>() {
+                        @Override
+                        public void onResult(Void result) {
+                            Log.d(TAG, "Credential state cleared successfully");
+                        }
+
+                        @Override
+                        public void onError(@NonNull ClearCredentialException e) {
+                            Log.w(TAG, "Failed to clear credential state", e);
+                        }
+                    }
+            );
+
+            // 3. Clear session từ SessionManager
+            SessionManager sessionManager = new SessionManager(this);
+            sessionManager.clearSession();
+
+            // 4. Điều hướng về LoginActivity
+            Intent intent = new Intent(this, LoginActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+
+            // 5. Finish current activity stack
+            finishAffinity();
+
+            Toast.makeText(this, "Đã đăng xuất", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e(TAG, "Error during logout", e);
+            Toast.makeText(this, "Lỗi khi đăng xuất", Toast.LENGTH_SHORT).show();
+        }
+    }
 }
+

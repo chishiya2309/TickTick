@@ -16,6 +16,7 @@ public class SessionManager {
     private static final String KEY_USER_UID = "user_uid";
     private static final String KEY_USER_EMAIL = "user_email";
     private static final String KEY_USER_NAME = "user_name";
+    private static final String KEY_USER_AVATAR_URL = "user_avatar_url";
 
     private final SharedPreferences prefs;
 
@@ -39,15 +40,22 @@ public class SessionManager {
                 .remove(KEY_USER_UID)
                 .remove(KEY_USER_EMAIL)
                 .remove(KEY_USER_NAME)
+                .remove(KEY_USER_AVATAR_URL)
                 .apply();
     }
 
-    public void setUserSession(@NonNull String uid, @Nullable String email, @Nullable String name) {
+    public void setUserSession(
+            @NonNull String uid,
+            @Nullable String email,
+            @Nullable String name,
+            @Nullable String avatarUrl
+    ) {
         prefs.edit()
                 .putString(KEY_SESSION_TYPE, SessionType.USER.name())
                 .putString(KEY_USER_UID, uid)
                 .putString(KEY_USER_EMAIL, email)
                 .putString(KEY_USER_NAME, name)
+                .putString(KEY_USER_AVATAR_URL, avatarUrl)
                 .apply();
     }
 
@@ -57,10 +65,12 @@ public class SessionManager {
                 .remove(KEY_USER_UID)
                 .remove(KEY_USER_EMAIL)
                 .remove(KEY_USER_NAME)
+                .remove(KEY_USER_AVATAR_URL)
                 .apply();
     }
 
     @Nullable public String getUserUid() { return prefs.getString(KEY_USER_UID, null); }
     @Nullable public String getUserEmail() { return prefs.getString(KEY_USER_EMAIL, null); }
     @Nullable public String getUserName() { return prefs.getString(KEY_USER_NAME, null); }
+    @Nullable public String getUserAvatarUrl() { return prefs.getString(KEY_USER_AVATAR_URL, null); }
 }
