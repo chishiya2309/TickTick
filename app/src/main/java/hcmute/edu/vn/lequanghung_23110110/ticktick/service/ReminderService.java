@@ -8,7 +8,6 @@ import android.content.Intent;
 import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
-import android.os.IBinder;
 import android.util.Log;
 import androidx.core.app.ServiceCompat;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
@@ -115,8 +114,8 @@ public class ReminderService extends Service {
                 continue;
             }
 
-            Intent intent = new Intent(this, AlarmReceiver.class);
-            intent.setAction(AlarmReceiver.ACTION_SHOW_NOTIFICATION);
+            Intent intent = new Intent(this, Alarm.class);
+            intent.setAction(Alarm.ACTION_SHOW_NOTIFICATION);
             intent.putExtra("TASK_ID", task.getId());
             intent.putExtra("TASK_TITLE", task.getTitle());
             boolean isOnTime = "Đúng giờ".equals(reminderStr) || "on_time".equals(reminderStr);
@@ -214,8 +213,8 @@ public class ReminderService extends Service {
         }
 
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        Intent intent = new Intent(context, AlarmReceiver.class);
-        intent.setAction(AlarmReceiver.ACTION_START_ALARM);
+        Intent intent = new Intent(context, Alarm.class);
+        intent.setAction(Alarm.ACTION_START_ALARM);
         intent.putExtra("TASK_ID", taskId);
         intent.putExtra("TASK_TITLE", title);
 
@@ -259,8 +258,8 @@ public class ReminderService extends Service {
         // Hủy 10 intent tiềm năng cho từng task cho an toàn
         for (int i = 0; i < 10; i++) {
             int requestCode = taskId * 1000 + i;
-            Intent intent = new Intent(this, AlarmReceiver.class);
-            intent.setAction(AlarmReceiver.ACTION_SHOW_NOTIFICATION);
+            Intent intent = new Intent(this, Alarm.class);
+            intent.setAction(Alarm.ACTION_SHOW_NOTIFICATION);
             PendingIntent pendingIntent = PendingIntent.getBroadcast(
                     this, requestCode, intent, PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
             if (pendingIntent != null) {
@@ -269,8 +268,8 @@ public class ReminderService extends Service {
             }
         }
 
-        Intent strictIntent = new Intent(this, AlarmReceiver.class);
-        strictIntent.setAction(AlarmReceiver.ACTION_START_ALARM);
+        Intent strictIntent = new Intent(this, Alarm.class);
+        strictIntent.setAction(Alarm.ACTION_START_ALARM);
         PendingIntent strictPendingIntent = PendingIntent.getBroadcast(
                 this, taskId, strictIntent, PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
         if (strictPendingIntent != null) {

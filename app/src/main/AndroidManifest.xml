@@ -59,7 +59,7 @@
             android:turnScreenOn="true" />
 
         <receiver
-            android:name=".service.AlarmReceiver"
+            android:name=".service.Alarm"
             android:enabled="true"
             android:exported="false" />
 

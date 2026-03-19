@@ -74,7 +74,7 @@ public class AudioBriefingService extends Service implements TextToSpeech.OnInit
 
     private void performTtsBriefing() {
         try {
-            // Đợi 1 chút để TTS khởi tạo (nếu cần)
+            // Đợi 1 chút để TTS khởi tạo
             int retryCount = 0;
             while (!isTtsInitialized && retryCount < 10) {
                 Thread.sleep(500);
@@ -96,10 +96,10 @@ public class AudioBriefingService extends Service implements TextToSpeech.OnInit
             cal.set(Calendar.SECOND, 59);
             long endOfToday = cal.getTimeInMillis();
             
-            // YÊU CẦU 1: Lấy chính xác task hôm nay
+            // Lấy chính xác task hôm nay
             List<TaskModel> todayTasks = dbHelper.getStrictlyTodayTasks(startOfToday, endOfToday);
             
-            // YÊU CẦU 2: Văn nói hóa nội dung
+            // Văn nói hóa nội dung
             String briefingText = buildFluentBriefingText(todayTasks);
             
             if (isTtsInitialized && textToSpeech != null) {
@@ -115,9 +115,7 @@ public class AudioBriefingService extends Service implements TextToSpeech.OnInit
         }
     }
 
-    /**
-     * YÊU CẦU 2: Xử lý chuỗi văn nói tự nhiên (Tiếng Anh)
-     */
+
     private String buildFluentBriefingText(List<TaskModel> tasks) {
         if (tasks == null || tasks.isEmpty()) {
             return "Hello. You have no tasks for today. Enjoy your relaxing day!";
@@ -133,8 +131,7 @@ public class AudioBriefingService extends Service implements TextToSpeech.OnInit
         for (int i = 0; i < tasks.size(); i++) {
             String title = tasks.get(i).getTitle();
             String label = (i < ordinals.length) ? ordinals[i] : ("number " + (i + 1));
-            
-            // Thêm dấu phẩy sau 'is' và dấu chấm kết thúc để ngắt nghỉ tự nhiên
+
             sb.append("Task ").append(label).append(" is, ")
               .append(title).append(". ");
         }
@@ -158,13 +155,11 @@ public class AudioBriefingService extends Service implements TextToSpeech.OnInit
     @Override
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
-            // YÊU CẦU 3: Set ngôn ngữ Tiếng Anh và Speech Rate
             int result = textToSpeech.setLanguage(Locale.US);
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 textToSpeech.setLanguage(Locale.ENGLISH);
             }
-            
-            // Tốc độ đọc 0.85f cho rõ ràng
+
             textToSpeech.setSpeechRate(0.85f);
             isTtsInitialized = true;
         } else {

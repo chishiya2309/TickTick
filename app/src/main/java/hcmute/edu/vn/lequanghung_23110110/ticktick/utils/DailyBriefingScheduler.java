@@ -1,5 +1,6 @@
 package hcmute.edu.vn.lequanghung_23110110.ticktick.utils;
 
+import android.annotation.SuppressLint;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -9,29 +10,28 @@ import android.util.Log;
 
 import java.util.Calendar;
 
-import hcmute.edu.vn.lequanghung_23110110.ticktick.service.AlarmReceiver;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.service.Alarm;
 
-/**
- * Utility class để lập lịch Daily Briefing sử dụng AlarmManager thay vì WorkManager
- */
+
 public class DailyBriefingScheduler {
 
     private static final String TAG = "DailyBriefingScheduler";
     private static final int ALARM_REQUEST_CODE = 1001;
-    private static final int TARGET_HOUR = 22;
-    private static final int TARGET_MINUTE = 15;
+    private static final int TARGET_HOUR = 8;
+    private static final int TARGET_MINUTE = 30;
 
+    @SuppressLint("ScheduleExactAlarm")
     public static void setupDailyBriefingWork(Context context) {
-        Log.d(TAG, "🚀 setupDailyBriefingWork() với AlarmManager");
+        Log.d(TAG, "setupDailyBriefingWork() với AlarmManager");
         
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager == null) {
-            Log.e(TAG, "❌ AlarmManager không khả dụng");
+            Log.e(TAG, "AlarmManager không khả dụng");
             return;
         }
 
         // Tạo Intent cho AlarmReceiver
-        Intent intent = new Intent(context, AlarmReceiver.class);
+        Intent intent = new Intent(context, Alarm.class);
         intent.setAction("DAILY_BRIEFING_ALARM");
         
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
@@ -57,10 +57,6 @@ public class DailyBriefingScheduler {
         }
 
         java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss", java.util.Locale.getDefault());
-        Log.d(TAG, "=== SETUP DAILY BRIEFING ALARM ===");
-        Log.d(TAG, "Thời gian hiện tại: " + sdf.format(calendar.getTime()));
-        Log.d(TAG, "Target time: " + TARGET_HOUR + ":" + TARGET_MINUTE);
-        Log.d(TAG, "Sẽ chạy vào: " + sdf.format(targetTime.getTime()));
 
         try {
             // Sử dụng setExactAndAllowWhileIdle để đảm bảo chạy ngay cả khi thiết bị ở chế độ Doze
@@ -72,9 +68,9 @@ public class DailyBriefingScheduler {
                         targetTime.getTimeInMillis(), pendingIntent);
             }
             
-            Log.d(TAG, "✅ Đã setup alarm thành công");
+            Log.d(TAG, "Đã setup alarm thành công");
         } catch (Exception e) {
-            Log.e(TAG, "❌ Lỗi khi setup alarm: " + e.getMessage(), e);
+            Log.e(TAG, "Lỗi khi setup alarm: " + e.getMessage(), e);
         }
         
         Log.d(TAG, "=== END SETUP ALARM ===");
@@ -83,7 +79,7 @@ public class DailyBriefingScheduler {
     public static void cancelDailyBriefingWork(Context context) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager != null) {
-            Intent intent = new Intent(context, AlarmReceiver.class);
+            Intent intent = new Intent(context, Alarm.class);
             intent.setAction("DAILY_BRIEFING_ALARM");
             
             int flags = PendingIntent.FLAG_UPDATE_CURRENT;
@@ -95,7 +91,7 @@ public class DailyBriefingScheduler {
                     context, ALARM_REQUEST_CODE, intent, flags);
             
             alarmManager.cancel(pendingIntent);
-            Log.d(TAG, "✅ Đã hủy alarm");
+            Log.d(TAG, "Đã hủy alarm");
         }
     }
 }

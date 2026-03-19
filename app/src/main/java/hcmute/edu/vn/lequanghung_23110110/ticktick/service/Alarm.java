@@ -11,7 +11,7 @@ import androidx.work.WorkManager;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.NotificationHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.worker.DailyBriefingWorker;
 
-public class AlarmReceiver extends BroadcastReceiver {
+public class Alarm extends BroadcastReceiver {
     public static final String ACTION_SHOW_NOTIFICATION = "hcmute.edu.vn.ticktick.SHOW_NOTIFICATION";
     public static final String ACTION_START_ALARM = "hcmute.edu.vn.ticktick.START_ALARM";
     private static final String TAG = "AlarmReceiver";
