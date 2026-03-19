@@ -55,4 +55,9 @@
 
     <string name="date_clear">Xóa</string>
     <string name="date_past_warning">Không thể chọn ngày trong quá khứ! Vui lòng chọn ngày khác.</string>
+
+    <string name="login_title">Chào mừng đến TickTick</string>
+    <string name="login_subtitle">Đăng nhập để đồng bộ tasks của bạn, hoặc tiếp tục sử dụng với chế độ khách.</string>
+    <string name="continue_with_google">Tiếp tục với Google</string>
+    <string name="continue_as_guest">Tiếp tục như Guest</string>
 </resources>
