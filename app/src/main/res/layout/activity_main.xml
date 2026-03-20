@@ -9,7 +9,7 @@
     android:fitsSystemWindows="true"
     tools:context=".activity.MainActivity">
 
-    <!-- ========== MAIN CONTENT (giữ nguyên) ========== -->
+    <!-- ========== MAIN CONTENT ========== -->
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
@@ -83,6 +83,14 @@
             android:paddingBottom="80dp"
             app:layout_behavior="@string/appbar_scrolling_view_behavior"
             tools:listitem="@layout/item_task" />
+
+        <!-- FRAGMENT CONTAINER (For Contacts) -->
+        <FrameLayout
+            android:id="@+id/fragment_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
         <include
             layout="@layout/layout_empty_state"

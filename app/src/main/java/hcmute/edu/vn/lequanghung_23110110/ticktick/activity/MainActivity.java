@@ -70,10 +70,13 @@ import android.text.TextUtils;
 import android.widget.EditText;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.DailyBriefingScheduler;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.fragment.ContactFragment;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "ALARM_DEBUG";
+    private static final int MENU_CONTACTS_ID = 100;
+
     private RecyclerView taskRecyclerView;
     private TaskAdapter taskAdapter;
     private List<TaskListItem> taskList;
@@ -82,6 +85,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView toolbarTitle;
     private ImageView toolbarListIcon;
     private TextView toolbarListEmoji;
+    private View fragmentContainer;
+    private FloatingActionButton fabAddTask;
 
     private TaskDatabaseHelper dbHelper;
     private int currentListId = 1;
@@ -130,6 +135,8 @@ public class MainActivity extends AppCompatActivity {
         toolbarTitle = findViewById(R.id.toolbar_title);
         toolbarListIcon = findViewById(R.id.toolbar_list_icon);
         toolbarListEmoji = findViewById(R.id.toolbar_list_emoji);
+        fragmentContainer = findViewById(R.id.fragment_container);
+        fabAddTask = findViewById(R.id.fab_add_task);
 
         setupToolbar();
         setupDrawer();
@@ -249,6 +256,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadTasksForList(int listId, int iconResId, String emojiIcon) {
         currentListId = listId;
+        
+        // Hide fragment container when showing task list
+        if (fragmentContainer != null) fragmentContainer.setVisibility(View.GONE);
+        if (taskRecyclerView != null) taskRecyclerView.setVisibility(View.VISIBLE);
+        if (fabAddTask != null) fabAddTask.setVisibility(View.VISIBLE);
+
         String listName = dbHelper.getListNameById(listId);
         updateToolbarForList(listName, iconResId, emojiIcon);
 
@@ -493,6 +506,23 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void showContactFragment() {
+        if (fragmentContainer != null) {
+            fragmentContainer.setVisibility(View.VISIBLE);
+            taskRecyclerView.setVisibility(View.GONE);
+            emptyStateContainer.setVisibility(View.GONE);
+            fabAddTask.setVisibility(View.GONE);
+            
+            toolbarTitle.setText("Danh bạ");
+            toolbarListIcon.setVisibility(View.GONE);
+            toolbarListEmoji.setVisibility(View.GONE);
+
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, new ContactFragment())
+                    .commit();
+        }
+    }
+
     private int getIconResIdForList(String listName) {
         switch (listName) {
             case "Hôm nay": return R.drawable.ic_today;
@@ -542,7 +572,11 @@ public class MainActivity extends AppCompatActivity {
                 if (item.getType() == DrawerMenuItem.ItemType.SEPARATOR) return;
                 drawerAdapter.setSelectedPosition(position);
                 int listId = item.getId();
-                if (listId != -1) loadTasksForList(listId, item.getIconResId(), item.getEmojiIcon());
+                if (listId == MENU_CONTACTS_ID) {
+                    showContactFragment();
+                } else if (listId != -1) {
+                    loadTasksForList(listId, item.getIconResId(), item.getEmojiIcon());
+                }
                 drawerLayout.closeDrawer(GravityCompat.START);
             }
             @Override
@@ -611,6 +645,10 @@ public class MainActivity extends AppCompatActivity {
         items.add(new DrawerMenuItem(2, "Ngày mai", R.drawable.ic_quick_tomorrow, DrawerMenuItem.ItemType.NAVIGATION));
         items.add(new DrawerMenuItem(3, "7 ngày tới", R.drawable.ic_quick_next_week, DrawerMenuItem.ItemType.NAVIGATION));
         items.add(new DrawerMenuItem(4, "Hộp thư đến", R.drawable.ic_inbox, DrawerMenuItem.ItemType.NAVIGATION));
+        
+        // ADD CONTACTS ITEM HERE
+        items.add(new DrawerMenuItem(MENU_CONTACTS_ID, "Danh bạ", R.drawable.ic_personal, DrawerMenuItem.ItemType.NAVIGATION));
+
         items.add(DrawerMenuItem.separator());
         List<DrawerMenuItem> customLists = dbHelper.getAllCustomLists();
         for (DrawerMenuItem customItem : customLists) {
@@ -868,6 +906,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void handleOnBackPressed() {
                 if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START);
+                else if (fragmentContainer != null && fragmentContainer.getVisibility() == View.VISIBLE) {
+                    loadTasksForList(currentListId); // Quay lại danh sách task
+                }
                 else { setEnabled(false); getOnBackPressedDispatcher().onBackPressed(); }
             }
         });

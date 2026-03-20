@@ -17,8 +17,8 @@ public class DailyBriefingScheduler {
 
     private static final String TAG = "DailyBriefingScheduler";
     private static final int ALARM_REQUEST_CODE = 1001;
-    private static final int TARGET_HOUR = 8;
-    private static final int TARGET_MINUTE = 30;
+    private static final int TARGET_HOUR = 9;
+    private static final int TARGET_MINUTE = 00;
 
     @SuppressLint("ScheduleExactAlarm")
     public static void setupDailyBriefingWork(Context context) {
