@@ -15,6 +15,7 @@ import androidx.credentials.CustomCredential;
 import androidx.credentials.GetCredentialRequest;
 import androidx.credentials.GetCredentialResponse;
 import androidx.credentials.exceptions.GetCredentialException;
+import androidx.credentials.exceptions.GetCredentialCancellationException;
 import androidx.credentials.exceptions.NoCredentialException;
 
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption;
@@ -24,6 +25,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.GoogleAuthProvider;
 
 import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.NetworkUtils;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SessionManager;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SyncManager;
@@ -89,6 +91,11 @@ public class LoginActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(@NonNull GetCredentialException e) {
+                        if (e instanceof GetCredentialCancellationException) {
+                            Log.d(TAG, "User cancelled Google account selector");
+                            return;
+                        }
+
                         if (e instanceof NoCredentialException) {
                             Log.w(TAG, "No Google credential available", e);
                             Toast.makeText(
@@ -155,16 +162,49 @@ public class LoginActivity extends AppCompatActivity {
             String photoUrl = firebaseAuth.getCurrentUser().getPhotoUrl() != null
                     ? firebaseAuth.getCurrentUser().getPhotoUrl().toString()
                     : null;
-            sessionManager.setUserSession(uid, email, displayName, photoUrl);
 
-            if (NetworkUtils.isOnWifi(this)) {
-                SyncManager.syncNow(this, "login_success_wifi");
+            // Phase 5: Check if there's guest data to migrate
+            TaskDatabaseHelper dbHelper = TaskDatabaseHelper.getInstance(this);
+            int guestDataCount = dbHelper.countGuestData();
+
+            if (guestDataCount > 0) {
+                showGuestMergeDialog(uid, email, displayName, photoUrl, dbHelper, guestDataCount);
             } else {
-                Log.d(TAG, "Skip immediate cloud sync because active network is not Wi-Fi");
+                completeLogin(uid, email, displayName, photoUrl);
             }
-
-            navigateToMain();
         });
+    }
+
+    private void showGuestMergeDialog(String uid, String email, String displayName,
+                                       String photoUrl, TaskDatabaseHelper dbHelper, int guestDataCount) {
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle("Hợp nhất dữ liệu")
+                .setMessage("Bạn có " + guestDataCount + " mục dữ liệu từ chế độ Khách. "
+                        + "Bạn có muốn chuyển chúng vào tài khoản " + (email != null ? email : "Google") + " không?")
+                .setPositiveButton("Có, hợp nhất", (dialog, which) -> {
+                    dbHelper.migrateGuestDataToUser(uid);
+                    Log.i(TAG, "Migrated " + guestDataCount + " guest items to user: " + uid);
+                    completeLogin(uid, email, displayName, photoUrl);
+                })
+                .setNegativeButton("Không", (dialog, which) -> {
+                    Log.d(TAG, "User declined guest data migration");
+                    completeLogin(uid, email, displayName, photoUrl);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void completeLogin(String uid, String email, String displayName, String photoUrl) {
+        sessionManager.setUserSession(uid, email, displayName, photoUrl);
+
+        if (NetworkUtils.isConnected(this)) {
+            SyncManager.syncNow(this, "login_success_network");
+        } else {
+            Log.d(TAG, "Skip immediate cloud sync because there is no active network connection");
+        }
+
+        SyncManager.schedulePeriodic(this);
+        navigateToMain();
     }
 
     private void continueAsGuest() {

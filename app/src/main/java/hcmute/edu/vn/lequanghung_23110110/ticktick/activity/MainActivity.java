@@ -75,10 +75,15 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.PinnedListAdapter;
 import android.widget.ImageView;
 import android.text.TextUtils;
 import android.widget.EditText;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.DailyBriefingScheduler;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.NotificationHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SessionManager;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SyncManager;
 
 import androidx.credentials.ClearCredentialStateRequest;
 import androidx.credentials.CredentialManager;
@@ -111,6 +116,17 @@ public class MainActivity extends AppCompatActivity {
     private ReminderService reminderService;
     private boolean isBound = false;
     private final ExecutorService avatarLoaderExecutor = Executors.newSingleThreadExecutor();
+
+    private final BroadcastReceiver syncReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if ("hcmute.edu.vn.ticktick.SYNC_COMPLETED".equals(intent.getAction())) {
+                Log.i(TAG, "Nhận được tín hiệu Sync Completed, đang tải lại UI...");
+                refreshDrawer();
+                loadTasksForList(currentListId);
+            }
+        }
+    };
 
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
@@ -191,9 +207,35 @@ public class MainActivity extends AppCompatActivity {
         }
 
         DailyBriefingScheduler.setupDailyBriefingWork(this);
+        SyncManager.schedulePeriodic(this);
         loadTasksForList(currentListId);
 
         checkPermissions();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (currentListId != -1) {
+            loadTasksForList(currentListId);
+        }
+        
+        // Xử lý intent từ notification (TaskId)
+        if (getIntent().hasExtra("EXTRA_TASK_ID")) {
+            int taskId = getIntent().getIntExtra("EXTRA_TASK_ID", -1);
+            getIntent().removeExtra("EXTRA_TASK_ID");
+            if (taskId != -1) {
+                showTaskDetailById(taskId);
+            }
+        }
+        
+        LocalBroadcastManager.getInstance(this).registerReceiver(syncReceiver, new IntentFilter("hcmute.edu.vn.ticktick.SYNC_COMPLETED"));
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(syncReceiver);
     }
 
     @Override
@@ -784,6 +826,24 @@ public class MainActivity extends AppCompatActivity {
         drawerAdapter.notifyDataSetChanged();
     }
 
+    private void refreshDrawer() {
+        // 1. Refresh Pinned Lists
+        if (pinnedItems != null && pinnedAdapter != null) {
+            pinnedItems.clear();
+            pinnedItems.addAll(dbHelper.getPinnedLists());
+            pinnedAdapter.notifyDataSetChanged();
+            updatePinnedVisibility();
+        }
+
+        // 2. Refresh Main Drawer Lists
+        if (drawerItems != null && drawerAdapter != null) {
+            drawerItems.clear();
+            drawerItems.addAll(buildDrawerMenuItems());
+            // Badges will be updated inside refreshDrawerBadges called after this
+            refreshDrawerBadges();
+        }
+    }
+
     private void setupTaskRecyclerView() {
         taskRecyclerView = findViewById(R.id.task_recycler_view);
         taskRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -1092,7 +1152,6 @@ public class MainActivity extends AppCompatActivity {
     @Override protected void onStart() { super.onStart(); bindService(new Intent(this, ReminderService.class), connection, Context.BIND_AUTO_CREATE); }
     @Override protected void onStop() { super.onStop(); if (isBound) { unbindService(connection); isBound = false; } }
     @Override protected void onDestroy() { super.onDestroy(); avatarLoaderExecutor.shutdownNow(); }
-    @Override protected void onResume() { super.onResume(); if (getIntent().hasExtra("EXTRA_TASK_ID")) { int taskId = getIntent().getIntExtra("EXTRA_TASK_ID", -1); getIntent().removeExtra("EXTRA_TASK_ID"); if (taskId != -1) showTaskDetailById(taskId); } }
     private void showTaskDetailById(int taskId) {
         TaskModel task = dbHelper.getTaskById(taskId);
         if (task != null) new TaskDetailBottomSheet(task).show(getSupportFragmentManager(), "TaskDetailBottomSheet");
@@ -1115,7 +1174,13 @@ public class MainActivity extends AppCompatActivity {
             // 1. Sign out Firebase
             FirebaseAuth.getInstance().signOut();
 
-            // 2. Clear credential state từ CredentialManager
+            // 2. Cancel all sync jobs
+            SyncManager.cancelAll(this);
+
+            // 2b. Cancel all alarms and notifications
+            ReminderService.cancelAllReminders(this);
+
+            // 3. Clear credential state từ CredentialManager
             CredentialManager credentialManager = CredentialManager.create(this);
             credentialManager.clearCredentialStateAsync(
                     new ClearCredentialStateRequest(),
@@ -1134,7 +1199,7 @@ public class MainActivity extends AppCompatActivity {
                     }
             );
 
-            // 3. Clear session từ SessionManager
+            // 4. Clear session từ SessionManager
             SessionManager sessionManager = new SessionManager(this);
             sessionManager.clearSession();
 

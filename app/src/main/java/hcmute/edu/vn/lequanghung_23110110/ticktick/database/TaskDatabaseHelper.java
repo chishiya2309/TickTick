@@ -1,5 +1,8 @@
 package hcmute.edu.vn.lequanghung_23110110.ticktick.database;
 
+import static hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SessionManager.OWNER_ID_GUEST_LOCAL;
+import static hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SessionManager.OWNER_TYPE_GUEST;
+
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -175,28 +178,36 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     private void migrateToVersion11(SQLiteDatabase db) {
         db.beginTransaction();
         try {
-            addColumnIfMissing(db, TABLE_LISTS, COL_LIST_OWNER_TYPE, "ALTER TABLE " + TABLE_LISTS + " ADD COLUMN " + COL_LIST_OWNER_TYPE + " TEXT NOT NULL DEFAULT '" + SessionManager.OWNER_TYPE_GUEST + "'");
-            addColumnIfMissing(db, TABLE_LISTS, COL_LIST_OWNER_ID, "ALTER TABLE " + TABLE_LISTS + " ADD COLUMN " + COL_LIST_OWNER_ID + " TEXT NOT NULL DEFAULT '" + SessionManager.OWNER_ID_GUEST_LOCAL + "'");
+            addColumnIfMissing(db, TABLE_LISTS, COL_LIST_OWNER_TYPE, "ALTER TABLE " + TABLE_LISTS + " ADD COLUMN " + COL_LIST_OWNER_TYPE + " TEXT NOT NULL DEFAULT '" + OWNER_TYPE_GUEST + "'");
+            addColumnIfMissing(db, TABLE_LISTS, COL_LIST_OWNER_ID, "ALTER TABLE " + TABLE_LISTS + " ADD COLUMN " + COL_LIST_OWNER_ID + " TEXT NOT NULL DEFAULT '" + OWNER_ID_GUEST_LOCAL + "'");
+            addColumnIfMissing(db, TABLE_LISTS, COL_LIST_IS_PINNED, "ALTER TABLE " + TABLE_LISTS + " ADD COLUMN " + COL_LIST_IS_PINNED + " INTEGER DEFAULT 0");
             addColumnIfMissing(db, TABLE_LISTS, COL_LIST_UPDATED_AT, "ALTER TABLE " + TABLE_LISTS + " ADD COLUMN " + COL_LIST_UPDATED_AT + " INTEGER DEFAULT 0");
             addColumnIfMissing(db, TABLE_LISTS, COL_LIST_SYNC_STATE, "ALTER TABLE " + TABLE_LISTS + " ADD COLUMN " + COL_LIST_SYNC_STATE + " TEXT DEFAULT '" + SYNC_STATE_SYNCED + "'");
             addColumnIfMissing(db, TABLE_LISTS, COL_LIST_DELETED_AT, "ALTER TABLE " + TABLE_LISTS + " ADD COLUMN " + COL_LIST_DELETED_AT + " INTEGER DEFAULT 0");
 
-            addColumnIfMissing(db, TABLE_TASKS, COL_TASK_OWNER_TYPE, "ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COL_TASK_OWNER_TYPE + " TEXT NOT NULL DEFAULT '" + SessionManager.OWNER_TYPE_GUEST + "'");
-            addColumnIfMissing(db, TABLE_TASKS, COL_TASK_OWNER_ID, "ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COL_TASK_OWNER_ID + " TEXT NOT NULL DEFAULT '" + SessionManager.OWNER_ID_GUEST_LOCAL + "'");
+            addColumnIfMissing(db, TABLE_TASKS, COL_TASK_OWNER_TYPE, "ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COL_TASK_OWNER_TYPE + " TEXT NOT NULL DEFAULT '" + OWNER_TYPE_GUEST + "'");
+            addColumnIfMissing(db, TABLE_TASKS, COL_TASK_OWNER_ID, "ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COL_TASK_OWNER_ID + " TEXT NOT NULL DEFAULT '" + OWNER_ID_GUEST_LOCAL + "'");
+            addColumnIfMissing(db, TABLE_TASKS, COL_TASK_IS_PINNED, "ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COL_TASK_IS_PINNED + " INTEGER DEFAULT 0");
+            addColumnIfMissing(db, TABLE_TASKS, COL_TASK_REMINDERS, "ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COL_TASK_REMINDERS + " TEXT DEFAULT ''");
+            addColumnIfMissing(db, TABLE_TASKS, COL_TASK_CREATED, "ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COL_TASK_CREATED + " INTEGER DEFAULT 0");
             addColumnIfMissing(db, TABLE_TASKS, COL_TASK_UPDATED_AT, "ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COL_TASK_UPDATED_AT + " INTEGER DEFAULT 0");
             addColumnIfMissing(db, TABLE_TASKS, COL_TASK_SYNC_STATE, "ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COL_TASK_SYNC_STATE + " TEXT DEFAULT '" + SYNC_STATE_SYNCED + "'");
             addColumnIfMissing(db, TABLE_TASKS, COL_TASK_DELETED_AT, "ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COL_TASK_DELETED_AT + " INTEGER DEFAULT 0");
 
             db.execSQL("UPDATE " + TABLE_LISTS + " SET " + COL_LIST_OWNER_TYPE + "='" + SYSTEM_OWNER_TYPE + "', " + COL_LIST_OWNER_ID + "='" + SYSTEM_OWNER_ID + "' WHERE " + COL_LIST_ID + " <= 4");
-            db.execSQL("UPDATE " + TABLE_LISTS + " SET " + COL_LIST_OWNER_TYPE + "='" + SessionManager.OWNER_TYPE_GUEST + "', " + COL_LIST_OWNER_ID + "='" + SessionManager.OWNER_ID_GUEST_LOCAL + "' WHERE " + COL_LIST_ID + " > 4");
-            db.execSQL("UPDATE " + TABLE_TASKS + " SET " + COL_TASK_OWNER_TYPE + "='" + SessionManager.OWNER_TYPE_GUEST + "' WHERE " + COL_TASK_OWNER_TYPE + " IS NULL OR " + COL_TASK_OWNER_TYPE + " = ''");
-            db.execSQL("UPDATE " + TABLE_TASKS + " SET " + COL_TASK_OWNER_ID + "='" + SessionManager.OWNER_ID_GUEST_LOCAL + "' WHERE " + COL_TASK_OWNER_ID + " IS NULL OR " + COL_TASK_OWNER_ID + " = ''");
+            db.execSQL("UPDATE " + TABLE_LISTS + " SET " + COL_LIST_OWNER_TYPE + "='" + OWNER_TYPE_GUEST + "', " + COL_LIST_OWNER_ID + "='" + OWNER_ID_GUEST_LOCAL + "' WHERE " + COL_LIST_ID + " > 4");
+            db.execSQL("UPDATE " + TABLE_TASKS + " SET " + COL_TASK_OWNER_TYPE + "='" + OWNER_TYPE_GUEST + "' WHERE " + COL_TASK_OWNER_TYPE + " IS NULL OR " + COL_TASK_OWNER_TYPE + " = ''");
+            db.execSQL("UPDATE " + TABLE_TASKS + " SET " + COL_TASK_OWNER_ID + "='" + OWNER_ID_GUEST_LOCAL + "' WHERE " + COL_TASK_OWNER_ID + " IS NULL OR " + COL_TASK_OWNER_ID + " = ''");
             db.execSQL("UPDATE " + TABLE_LISTS + " SET " + COL_LIST_SYNC_STATE + "='" + SYNC_STATE_SYNCED + "' WHERE " + COL_LIST_SYNC_STATE + " IS NULL OR " + COL_LIST_SYNC_STATE + " = ''");
             db.execSQL("UPDATE " + TABLE_TASKS + " SET " + COL_TASK_SYNC_STATE + "='" + SYNC_STATE_SYNCED + "' WHERE " + COL_TASK_SYNC_STATE + " IS NULL OR " + COL_TASK_SYNC_STATE + " = ''");
             db.execSQL("UPDATE " + TABLE_LISTS + " SET " + COL_LIST_UPDATED_AT + " = strftime('%s','now') WHERE " + COL_LIST_UPDATED_AT + " IS NULL OR " + COL_LIST_UPDATED_AT + " = 0");
             db.execSQL("UPDATE " + TABLE_TASKS + " SET " + COL_TASK_UPDATED_AT + " = strftime('%s','now') WHERE " + COL_TASK_UPDATED_AT + " IS NULL OR " + COL_TASK_UPDATED_AT + " = 0");
+            db.execSQL("UPDATE " + TABLE_TASKS + " SET " + COL_TASK_CREATED + " = strftime('%s','now') WHERE " + COL_TASK_CREATED + " IS NULL OR " + COL_TASK_CREATED + " = 0");
             db.execSQL("UPDATE " + TABLE_LISTS + " SET " + COL_LIST_DELETED_AT + "=0 WHERE " + COL_LIST_DELETED_AT + " IS NULL");
             db.execSQL("UPDATE " + TABLE_TASKS + " SET " + COL_TASK_DELETED_AT + "=0 WHERE " + COL_TASK_DELETED_AT + " IS NULL");
+            db.execSQL("UPDATE " + TABLE_TASKS + " SET " + COL_TASK_IS_PINNED + "=0 WHERE " + COL_TASK_IS_PINNED + " IS NULL");
+            db.execSQL("UPDATE " + TABLE_LISTS + " SET " + COL_LIST_IS_PINNED + "=0 WHERE " + COL_LIST_IS_PINNED + " IS NULL");
+            db.execSQL("UPDATE " + TABLE_TASKS + " SET " + COL_TASK_REMINDERS + "='' WHERE " + COL_TASK_REMINDERS + " IS NULL");
 
             createIndexes(db);
             db.setTransactionSuccessful();
@@ -213,8 +224,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 + COL_LIST_ICON + " TEXT, "
                 + COL_LIST_ORDER + " INTEGER DEFAULT 0, "
                 + COL_LIST_IS_PINNED + " INTEGER DEFAULT 0, "
-                + COL_LIST_OWNER_TYPE + " TEXT NOT NULL DEFAULT '" + SessionManager.OWNER_TYPE_GUEST + "', "
-                + COL_LIST_OWNER_ID + " TEXT NOT NULL DEFAULT '" + SessionManager.OWNER_ID_GUEST_LOCAL + "', "
+                + COL_LIST_OWNER_TYPE + " TEXT NOT NULL DEFAULT '" + OWNER_TYPE_GUEST + "', "
+                + COL_LIST_OWNER_ID + " TEXT NOT NULL DEFAULT '" + OWNER_ID_GUEST_LOCAL + "', "
                 + COL_LIST_UPDATED_AT + " INTEGER DEFAULT (strftime('%s','now')), "
                 + COL_LIST_SYNC_STATE + " TEXT DEFAULT '" + SYNC_STATE_SYNCED + "', "
                 + COL_LIST_DELETED_AT + " INTEGER DEFAULT 0"
@@ -231,8 +242,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 + COL_TASK_IS_PINNED + " INTEGER DEFAULT 0, "
                 + COL_TASK_REMINDERS + " TEXT DEFAULT '', "
                 + COL_TASK_CREATED + " INTEGER DEFAULT (strftime('%s','now')), "
-                + COL_TASK_OWNER_TYPE + " TEXT NOT NULL DEFAULT '" + SessionManager.OWNER_TYPE_GUEST + "', "
-                + COL_TASK_OWNER_ID + " TEXT NOT NULL DEFAULT '" + SessionManager.OWNER_ID_GUEST_LOCAL + "', "
+                + COL_TASK_OWNER_TYPE + " TEXT NOT NULL DEFAULT '" + OWNER_TYPE_GUEST + "', "
+                + COL_TASK_OWNER_ID + " TEXT NOT NULL DEFAULT '" + OWNER_ID_GUEST_LOCAL + "', "
                 + COL_TASK_UPDATED_AT + " INTEGER DEFAULT (strftime('%s','now')), "
                 + COL_TASK_SYNC_STATE + " TEXT DEFAULT '" + SYNC_STATE_SYNCED + "', "
                 + COL_TASK_DELETED_AT + " INTEGER DEFAULT 0, "
@@ -264,8 +275,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
             cv.put(COL_LIST_NAME, lists[i]);
             cv.put(COL_LIST_ICON, icons[i]);
             cv.put(COL_LIST_ORDER, i);
-            cv.put(COL_LIST_OWNER_TYPE, i < 4 ? SYSTEM_OWNER_TYPE : SessionManager.OWNER_TYPE_GUEST);
-            cv.put(COL_LIST_OWNER_ID, i < 4 ? SYSTEM_OWNER_ID : SessionManager.OWNER_ID_GUEST_LOCAL);
+            cv.put(COL_LIST_OWNER_TYPE, i < 4 ? SYSTEM_OWNER_TYPE : OWNER_TYPE_GUEST);
+            cv.put(COL_LIST_OWNER_ID, i < 4 ? SYSTEM_OWNER_ID : OWNER_ID_GUEST_LOCAL);
             cv.put(COL_LIST_UPDATED_AT, nowSeconds());
             cv.put(COL_LIST_SYNC_STATE, SYNC_STATE_SYNCED);
             cv.put(COL_LIST_DELETED_AT, 0);
@@ -294,8 +305,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         cv.put(COL_TASK_COMPLETED, completed ? 1 : 0);
         cv.put(COL_TASK_IS_PINNED, isPinned ? 1 : 0);
         cv.put(COL_TASK_REMINDERS, reminders);
-        cv.put(COL_TASK_OWNER_TYPE, SessionManager.OWNER_TYPE_GUEST);
-        cv.put(COL_TASK_OWNER_ID, SessionManager.OWNER_ID_GUEST_LOCAL);
+        cv.put(COL_TASK_OWNER_TYPE, OWNER_TYPE_GUEST);
+        cv.put(COL_TASK_OWNER_ID, OWNER_ID_GUEST_LOCAL);
         cv.put(COL_TASK_UPDATED_AT, nowSeconds());
         cv.put(COL_TASK_SYNC_STATE, SYNC_STATE_SYNCED);
         cv.put(COL_TASK_DELETED_AT, 0);
@@ -1084,5 +1095,260 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         }
         cursor.close();
         return lists;
+    }
+
+    /** Lấy tất cả task IDs (dùng cho cancelAllReminders) */
+    public List<Integer> getAllTaskIds() {
+        List<Integer> ids = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(TABLE_TASKS, new String[]{COL_TASK_ID},
+                COL_TASK_DELETED_AT + " = 0", null, null, null, null);
+        while (cursor.moveToNext()) {
+            ids.add(cursor.getInt(0));
+        }
+        cursor.close();
+        return ids;
+    }
+
+    // ═══════════════════════════════════════
+    // SYNC Operations
+    // ═══════════════════════════════════════
+
+    /** Lấy tất cả lists có sync_state != SYNCED cho owner hiện tại */
+    public List<ContentValues> getPendingLists() {
+        List<ContentValues> results = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        OwnerScope owner = resolveOwnerScope();
+
+        Cursor cursor = db.query(TABLE_LISTS, null,
+                COL_LIST_SYNC_STATE + " != ? AND " + COL_LIST_OWNER_TYPE + " = ? AND " + COL_LIST_OWNER_ID + " = ?",
+                new String[]{SYNC_STATE_SYNCED, owner.ownerType, owner.ownerId},
+                null, null, null);
+
+        while (cursor.moveToNext()) {
+            ContentValues cv = new ContentValues();
+            cv.put(COL_LIST_ID, cursor.getInt(cursor.getColumnIndexOrThrow(COL_LIST_ID)));
+            cv.put(COL_LIST_NAME, cursor.getString(cursor.getColumnIndexOrThrow(COL_LIST_NAME)));
+            cv.put(COL_LIST_ICON, cursor.getString(cursor.getColumnIndexOrThrow(COL_LIST_ICON)));
+            cv.put(COL_LIST_ORDER, cursor.getInt(cursor.getColumnIndexOrThrow(COL_LIST_ORDER)));
+            cv.put(COL_LIST_IS_PINNED, cursor.getInt(cursor.getColumnIndexOrThrow(COL_LIST_IS_PINNED)));
+            cv.put(COL_LIST_OWNER_TYPE, cursor.getString(cursor.getColumnIndexOrThrow(COL_LIST_OWNER_TYPE)));
+            cv.put(COL_LIST_OWNER_ID, cursor.getString(cursor.getColumnIndexOrThrow(COL_LIST_OWNER_ID)));
+            cv.put(COL_LIST_UPDATED_AT, cursor.getLong(cursor.getColumnIndexOrThrow(COL_LIST_UPDATED_AT)));
+            cv.put(COL_LIST_SYNC_STATE, cursor.getString(cursor.getColumnIndexOrThrow(COL_LIST_SYNC_STATE)));
+            cv.put(COL_LIST_DELETED_AT, cursor.getLong(cursor.getColumnIndexOrThrow(COL_LIST_DELETED_AT)));
+            results.add(cv);
+        }
+        cursor.close();
+        return results;
+    }
+
+    /** Lấy tất cả tasks có sync_state != SYNCED cho owner hiện tại */
+    public List<ContentValues> getPendingTasks() {
+        List<ContentValues> results = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        OwnerScope owner = resolveOwnerScope();
+
+        Cursor cursor = db.query(TABLE_TASKS, null,
+                COL_TASK_SYNC_STATE + " != ? AND " + COL_TASK_OWNER_TYPE + " = ? AND " + COL_TASK_OWNER_ID + " = ?",
+                new String[]{SYNC_STATE_SYNCED, owner.ownerType, owner.ownerId},
+                null, null, null);
+
+        while (cursor.moveToNext()) {
+            ContentValues cv = new ContentValues();
+            cv.put(COL_TASK_ID, cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_ID)));
+            cv.put(COL_TASK_TITLE, cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)));
+            cv.put(COL_TASK_DESCRIPTION, cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DESCRIPTION)));
+            cv.put(COL_TASK_LIST_ID, cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)));
+            cv.put(COL_TASK_DATE_TAG, cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)));
+            cv.put(COL_TASK_DUE_DATE, cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)));
+            cv.put(COL_TASK_COMPLETED, cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)));
+            cv.put(COL_TASK_IS_PINNED, cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)));
+            cv.put(COL_TASK_REMINDERS, cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS)));
+            cv.put(COL_TASK_CREATED, cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_CREATED)));
+            cv.put(COL_TASK_OWNER_TYPE, cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_OWNER_TYPE)));
+            cv.put(COL_TASK_OWNER_ID, cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_OWNER_ID)));
+            cv.put(COL_TASK_UPDATED_AT, cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_UPDATED_AT)));
+            cv.put(COL_TASK_SYNC_STATE, cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_SYNC_STATE)));
+            cv.put(COL_TASK_DELETED_AT, cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DELETED_AT)));
+            results.add(cv);
+        }
+        cursor.close();
+        return results;
+    }
+
+    /** Đánh dấu list đã đồng bộ thành công */
+    public void markListSynced(int listId) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COL_LIST_SYNC_STATE, SYNC_STATE_SYNCED);
+        db.update(TABLE_LISTS, cv, COL_LIST_ID + " = ?", new String[]{String.valueOf(listId)});
+    }
+
+    /** Đánh dấu task đã đồng bộ thành công */
+    public void markTaskSynced(int taskId) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COL_TASK_SYNC_STATE, SYNC_STATE_SYNCED);
+        db.update(TABLE_TASKS, cv, COL_TASK_ID + " = ?", new String[]{String.valueOf(taskId)});
+    }
+
+    /** Xóa hẳn list đã bị soft-delete và đã sync thành công */
+    public void purgeDeletedList(int listId) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.delete(TABLE_LISTS, COL_LIST_ID + " = ? AND " + COL_LIST_DELETED_AT + " > 0",
+                new String[]{String.valueOf(listId)});
+    }
+
+    /** Xóa hẳn task đã bị soft-delete và đã sync thành công */
+    public void purgeDeletedTask(int taskId) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.delete(TABLE_TASKS, COL_TASK_ID + " = ? AND " + COL_TASK_DELETED_AT + " > 0",
+                new String[]{String.valueOf(taskId)});
+    }
+
+    /** Upsert list từ cloud (dùng cho pull). Nếu local đã có → cập nhật, nếu chưa → insert */
+    public void upsertListFromCloud(int localId, String name, String iconName, int order,
+                                     int isPinned, String ownerType, String ownerId,
+                                     long updatedAt, long deletedAt) {
+        SQLiteDatabase db = getWritableDatabase();
+
+        Cursor cursor = db.query(TABLE_LISTS, new String[]{COL_LIST_ID, COL_LIST_UPDATED_AT, COL_LIST_SYNC_STATE},
+                COL_LIST_ID + " = ?", new String[]{String.valueOf(localId)}, null, null, null);
+
+        ContentValues cv = new ContentValues();
+        cv.put(COL_LIST_NAME, name);
+        cv.put(COL_LIST_ICON, iconName);
+        cv.put(COL_LIST_ORDER, order);
+        cv.put(COL_LIST_IS_PINNED, isPinned);
+        cv.put(COL_LIST_OWNER_TYPE, ownerType);
+        cv.put(COL_LIST_OWNER_ID, ownerId);
+        cv.put(COL_LIST_UPDATED_AT, updatedAt);
+        cv.put(COL_LIST_SYNC_STATE, SYNC_STATE_SYNCED);
+        cv.put(COL_LIST_DELETED_AT, deletedAt);
+
+        if (cursor.moveToFirst()) {
+            long localUpdatedAt = cursor.getLong(cursor.getColumnIndexOrThrow(COL_LIST_UPDATED_AT));
+            String localSyncState = cursor.getString(cursor.getColumnIndexOrThrow(COL_LIST_SYNC_STATE));
+            // Last-Write-Wins: chỉ ghi đè nếu cloud mới hơn VÀ local đã synced
+            if (updatedAt > localUpdatedAt && SYNC_STATE_SYNCED.equals(localSyncState)) {
+                db.update(TABLE_LISTS, cv, COL_LIST_ID + " = ?", new String[]{String.valueOf(localId)});
+            }
+        } else {
+            cv.put(COL_LIST_ID, localId);
+            db.insertWithOnConflict(TABLE_LISTS, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+        }
+        cursor.close();
+    }
+
+    /** Upsert task từ cloud (dùng cho pull). Last-Write-Wins */
+    public void upsertTaskFromCloud(int localId, String title, String description, int listId,
+                                     String dateTag, long dueDateMillis, int isCompleted,
+                                     int isPinned, String reminders, long createdAt,
+                                     String ownerType, String ownerId, long updatedAt, long deletedAt) {
+        SQLiteDatabase db = getWritableDatabase();
+
+        Cursor cursor = db.query(TABLE_TASKS, new String[]{COL_TASK_ID, COL_TASK_UPDATED_AT, COL_TASK_SYNC_STATE},
+                COL_TASK_ID + " = ?", new String[]{String.valueOf(localId)}, null, null, null);
+
+        ContentValues cv = new ContentValues();
+        cv.put(COL_TASK_TITLE, title);
+        cv.put(COL_TASK_DESCRIPTION, description);
+        cv.put(COL_TASK_LIST_ID, listId);
+        cv.put(COL_TASK_DATE_TAG, dateTag);
+        cv.put(COL_TASK_DUE_DATE, dueDateMillis);
+        cv.put(COL_TASK_COMPLETED, isCompleted);
+        cv.put(COL_TASK_IS_PINNED, isPinned);
+        cv.put(COL_TASK_REMINDERS, reminders);
+        cv.put(COL_TASK_CREATED, createdAt);
+        cv.put(COL_TASK_OWNER_TYPE, ownerType);
+        cv.put(COL_TASK_OWNER_ID, ownerId);
+        cv.put(COL_TASK_UPDATED_AT, updatedAt);
+        cv.put(COL_TASK_SYNC_STATE, SYNC_STATE_SYNCED);
+        cv.put(COL_TASK_DELETED_AT, deletedAt);
+
+        if (cursor.moveToFirst()) {
+            long localUpdatedAt = cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_UPDATED_AT));
+            String localSyncState = cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_SYNC_STATE));
+            if (updatedAt > localUpdatedAt && SYNC_STATE_SYNCED.equals(localSyncState)) {
+                db.update(TABLE_TASKS, cv, COL_TASK_ID + " = ?", new String[]{String.valueOf(localId)});
+            }
+        } else {
+            cv.put(COL_TASK_ID, localId);
+            db.insertWithOnConflict(TABLE_TASKS, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+        }
+        cursor.close();
+    }
+
+    // ═══════════════════════════════════════
+    // Guest-to-User Migration (Phase 5)
+    // ═══════════════════════════════════════
+
+    /** Đếm số bản ghi guest local (lists custom + tasks) */
+    public int countGuestData() {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor listCur = db.rawQuery(
+                "SELECT COUNT(*) FROM " + TABLE_LISTS + " WHERE " + COL_LIST_OWNER_TYPE + " = ? AND " + COL_LIST_OWNER_ID + " = ? AND " + COL_LIST_ID + " > 4 AND " + COL_LIST_DELETED_AT + " = 0",
+                new String[]{OWNER_TYPE_GUEST, OWNER_ID_GUEST_LOCAL});
+        int listCount = 0;
+        if (listCur.moveToFirst()) listCount = listCur.getInt(0);
+        listCur.close();
+
+        Cursor taskCur = db.rawQuery(
+                "SELECT COUNT(*) FROM " + TABLE_TASKS + " WHERE " + COL_TASK_OWNER_TYPE + " = ? AND " + COL_TASK_OWNER_ID + " = ? AND " + COL_TASK_DELETED_AT + " = 0",
+                new String[]{OWNER_TYPE_GUEST, OWNER_ID_GUEST_LOCAL});
+        int taskCount = 0;
+        if (taskCur.moveToFirst()) taskCount = taskCur.getInt(0);
+        taskCur.close();
+
+        return listCount + taskCount;
+    }
+
+    /** Chuyển toàn bộ dữ liệu guest → user, đánh dấu pending sync */
+    public void migrateGuestDataToUser(String uid) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            ContentValues listCv = new ContentValues();
+            listCv.put(COL_LIST_OWNER_TYPE, SessionManager.OWNER_TYPE_USER);
+            listCv.put(COL_LIST_OWNER_ID, uid);
+            listCv.put(COL_LIST_UPDATED_AT, nowSeconds());
+            listCv.put(COL_LIST_SYNC_STATE, SYNC_STATE_PENDING_CREATE);
+            db.update(TABLE_LISTS, listCv,
+                    COL_LIST_OWNER_TYPE + " = ? AND " + COL_LIST_OWNER_ID + " = ? AND " + COL_LIST_ID + " > 4",
+                    new String[]{OWNER_TYPE_GUEST, OWNER_ID_GUEST_LOCAL});
+
+            ContentValues taskCv = new ContentValues();
+            taskCv.put(COL_TASK_OWNER_TYPE, SessionManager.OWNER_TYPE_USER);
+            taskCv.put(COL_TASK_OWNER_ID, uid);
+            taskCv.put(COL_TASK_UPDATED_AT, nowSeconds());
+            taskCv.put(COL_TASK_SYNC_STATE, SYNC_STATE_PENDING_CREATE);
+            db.update(TABLE_TASKS, taskCv,
+                    COL_TASK_OWNER_TYPE + " = ? AND " + COL_TASK_OWNER_ID + " = ?",
+                    new String[]{OWNER_TYPE_GUEST, OWNER_ID_GUEST_LOCAL});
+
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    // ═══════════════════════════════════════
+    // Sync Timestamp Management
+    // ═══════════════════════════════════════
+
+    private static final String PREF_NAME_SYNC = "TickTickSyncPrefs";
+    private static final String KEY_LAST_SYNC = "last_sync_timestamp";
+
+    public long getLastSyncTimestamp() {
+        return appContext.getSharedPreferences(PREF_NAME_SYNC, Context.MODE_PRIVATE)
+                .getLong(KEY_LAST_SYNC, 0L);
+    }
+
+    public void setLastSyncTimestamp(long timestamp) {
+        appContext.getSharedPreferences(PREF_NAME_SYNC, Context.MODE_PRIVATE)
+                .edit()
+                .putLong(KEY_LAST_SYNC, timestamp)
+                .apply();
     }
 }
