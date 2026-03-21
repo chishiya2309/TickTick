@@ -70,7 +70,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="8dp"
             android:src="@android:drawable/ic_menu_call"
-            app:tint="@color/material_dynamic_tertiary80" />
+            app:tint="@color/main_accent_blue" />
 
         <ImageButton
             android:id="@+id/btnSms"
@@ -79,7 +79,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="8dp"
             android:src="@android:drawable/ic_menu_send"
-            app:tint="@color/material_dynamic_tertiary90" />
+            app:tint="@color/main_accent_blue" />
 
         <ImageButton
             android:id="@+id/btnAddNote"
@@ -88,7 +88,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="8dp"
             android:src="@drawable/ic_add_list"
-            app:tint="@color/material_dynamic_tertiary90" />
+            app:tint="@color/main_accent_blue" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

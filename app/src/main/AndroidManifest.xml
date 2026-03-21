@@ -82,6 +82,11 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
+        <provider
+            android:name=".provider.SyncedContactProvider"
+            android:authorities="hcmute.edu.vn.lequanghung_23110110.ticktick.provider"
+            android:exported="false" />
+
     </application>
 
 </manifest>
