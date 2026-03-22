@@ -4,12 +4,17 @@ plugins {
 }
 
 android {
-    namespace = "hcmute.edu.vn.lequanghung_23110110.ticktick"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("${rootProject.projectDir}/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
         }
     }
+
+    namespace = "hcmute.edu.vn.lequanghung_23110110.ticktick"
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "hcmute.edu.vn.lequanghung_23110110.ticktick"
@@ -22,6 +27,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -30,6 +38,7 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -46,7 +55,6 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
-    // WorkManager cho Daily Briefing
     implementation("androidx.work:work-runtime:2.11.1")
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
