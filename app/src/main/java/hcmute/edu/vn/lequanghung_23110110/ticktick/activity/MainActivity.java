@@ -726,6 +726,7 @@ public class MainActivity extends AppCompatActivity {
                     if (item.getType() == DrawerMenuItem.ItemType.LIST && drawerItems.indexOf(item) >= 5) orderedListNames.add(item.getTitle());
                 }
                 dbHelper.updateListOrder(orderedListNames);
+                requestImmediateSync("list_reordered");
             }
         };
         new ItemTouchHelper(simpleCallback).attachToRecyclerView(drawerRecyclerView);
@@ -833,41 +834,38 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void addNewListToDrawer(String name, String emojiIcon) {
-        drawerItems.clear();
-        drawerItems.addAll(buildDrawerMenuItems());
-        drawerAdapter.notifyDataSetChanged();
-        if (drawerItems.size() > 5) ((RecyclerView)findViewById(R.id.drawer_recycler_view)).smoothScrollToPosition(5);
+        refreshDrawer();
+        if (drawerItems != null && drawerItems.size() > 5) {
+            ((RecyclerView) findViewById(R.id.drawer_recycler_view)).smoothScrollToPosition(5);
+        }
     }
 
     public void updateListInDrawer(int listId, String newName, String newEmojiIcon, int position) {
         dbHelper.updateList(listId, newName, newEmojiIcon);
-        DrawerMenuItem item = drawerItems.get(position);
-        item.setTitle(newName);
-        item.setEmojiIcon(newEmojiIcon);
-        drawerAdapter.notifyItemChanged(position);
-        if (item.isSelected()) updateToolbarForList(newName, item.getIconResId(), newEmojiIcon);
-        if (pinnedItems != null && pinnedAdapter != null) {
-            pinnedItems.clear();
-            pinnedItems.addAll(dbHelper.getPinnedLists());
-            pinnedAdapter.notifyDataSetChanged();
-            updatePinnedVisibility();
+        requestImmediateSync("list_updated");
+        refreshDrawer();
+
+        // Nếu đang đứng ở list vừa sửa thì cập nhật lại toolbar theo dữ liệu mới
+        if (currentListId == listId) {
+            int iconResId = dbHelper.getListIconResId(this, listId);
+            String listName = dbHelper.getListNameById(listId);
+            updateToolbarForList(listName, iconResId, newEmojiIcon);
         }
     }
 
     public void deleteListFromDrawer(int listId, int position) {
         dbHelper.deleteList(listId);
-        DrawerMenuItem deletedItem = drawerItems.remove(position);
-        drawerAdapter.notifyItemRemoved(position);
-        if (deletedItem.isSelected()) {
-            DrawerMenuItem todayItem = drawerItems.get(0);
+        requestImmediateSync("list_deleted");
+
+        // Nếu list hiện tại bị xóa, quay về "Hôm nay"
+        boolean isDeletingCurrentList = currentListId == listId;
+
+        refreshDrawer();
+
+        if (isDeletingCurrentList) {
             drawerAdapter.setSelectedPosition(0);
+            DrawerMenuItem todayItem = drawerItems.get(0);
             loadTasksForList(1, todayItem.getIconResId(), todayItem.getEmojiIcon());
-        }
-        if (pinnedItems != null && pinnedAdapter != null) {
-            pinnedItems.clear();
-            pinnedItems.addAll(dbHelper.getPinnedLists());
-            pinnedAdapter.notifyDataSetChanged();
-            updatePinnedVisibility();
         }
     }
 
@@ -897,6 +895,10 @@ public class MainActivity extends AppCompatActivity {
             // Badges will be updated inside refreshDrawerBadges called after this
             refreshDrawerBadges();
         }
+    }
+
+    private void requestImmediateSync(String reason) {
+        SyncManager.syncNow(this, reason);
     }
 
     private void setupTaskRecyclerView() {
@@ -935,6 +937,8 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 }
+
+                requestImmediateSync("task_completed_toggled");
                 
                 loadTasksForList(currentListId);
                 rescheduleReminders();
@@ -942,6 +946,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onTaskPinClicked(TaskModel task) {
                 dbHelper.updateTaskPinned(task.getId(), !task.isPinned());
+                requestImmediateSync("task_pin_toggled");
                 loadTasksForList(currentListId);
                 rescheduleReminders();
             }
@@ -959,6 +964,7 @@ public class MainActivity extends AppCompatActivity {
                 }
              
                 dbHelper.deleteTask(task.getId());
+                requestImmediateSync("task_deleted");
                 loadTasksForList(currentListId);
                 rescheduleReminders();
             }
@@ -983,6 +989,7 @@ public class MainActivity extends AppCompatActivity {
                 });
                 datePicker.setOnDateClearedListener(() -> {
                     dbHelper.updateTaskDate(task.getId(), null, 0, new ArrayList<>());
+                    requestImmediateSync("task_date_cleared");
                     loadTasksForList(currentListId);
                     rescheduleReminders();
                 });
@@ -1087,6 +1094,9 @@ public class MainActivity extends AppCompatActivity {
 
             Log.d(TAG, "UI: Click Save. Title=" + title + ", FinalMillis=" + finalDueDate);
             long newTaskId = dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate, selectedReminders[0]);
+            if (newTaskId > 0) {
+                requestImmediateSync("task_created");
+            }
 
             // Sync với Google Calendar nếu có due date
             if (finalDueDate > 0 && newTaskId > 0) {
@@ -1214,6 +1224,7 @@ public class MainActivity extends AppCompatActivity {
             if (listId != -1) {
                 boolean isCurrentlyPinned = dbHelper.isListPinned(listId);
                 dbHelper.togglePinList(listId, !isCurrentlyPinned);
+                requestImmediateSync("list_pin_toggled");
                 pinnedItems.clear(); pinnedItems.addAll(dbHelper.getPinnedLists());
                 pinnedAdapter.notifyDataSetChanged(); updatePinnedVisibility();
                 Toast.makeText(this, (!isCurrentlyPinned ? "Đã đính ghim: " : "Đã bỏ ghim: ") + item.getTitle(), Toast.LENGTH_SHORT).show();

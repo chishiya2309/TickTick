@@ -48,6 +48,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.DatePickerBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.ContactModel;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.provider.SyncedContactContract;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SyncManager;
 
 public class ContactFragment extends Fragment {
 
@@ -339,7 +340,10 @@ public class ContactFragment extends Fragment {
             }
             
             TaskDatabaseHelper dbHelper = TaskDatabaseHelper.getInstance(getContext());
-            dbHelper.insertTask(title, inputDescription.getText().toString().trim(), 1, selectedDateTag[0], finalDueDate, selectedReminders[0]);
+            long newTaskId = dbHelper.insertTask(title, inputDescription.getText().toString().trim(), 1, selectedDateTag[0], finalDueDate, selectedReminders[0]);
+            if (newTaskId > 0 && getContext() != null) {
+                SyncManager.syncNow(getContext(), "task_created_from_contact");
+            }
             
             bottomSheet.dismiss();
             Toast.makeText(getContext(), "Đã thêm công việc liên hệ", Toast.LENGTH_SHORT).show();

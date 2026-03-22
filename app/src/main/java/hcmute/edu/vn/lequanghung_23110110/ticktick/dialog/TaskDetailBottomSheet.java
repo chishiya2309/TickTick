@@ -23,6 +23,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.CalendarHelper;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SyncManager;
 
 public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
 
@@ -190,6 +191,8 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
                     }
                 }
 
+                SyncManager.syncNow(requireContext(), "task_completed_toggled");
+
                 if (updateListener != null) {
                     updateListener.onTaskUpdated();
                 }
@@ -234,6 +237,7 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
 
                 if (hasChanged) {
                     dbHelper.updateTaskDetails(task.getId(), task.getTitle(), task.getDescription());
+                    SyncManager.syncNow(requireContext(), "task_updated");
 
                     // Cập nhật event trên Google Calendar nếu có
                     if (task.getCalendarEventId() > 0) {

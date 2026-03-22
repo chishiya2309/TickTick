@@ -1405,6 +1405,21 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    /** Xóa toàn bộ dữ liệu của guest (dùng khi user đã có dữ liệu trên cloud và không cần hợp nhất) */
+    public void clearGuestData() {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            db.delete(TABLE_TASKS, COL_TASK_OWNER_TYPE + " = ? AND " + COL_TASK_OWNER_ID + " = ?",
+                    new String[]{OWNER_TYPE_GUEST, OWNER_ID_GUEST_LOCAL});
+            db.delete(TABLE_LISTS, COL_LIST_OWNER_TYPE + " = ? AND " + COL_LIST_OWNER_ID + " = ? AND " + COL_LIST_ID + " > 4",
+                    new String[]{OWNER_TYPE_GUEST, OWNER_ID_GUEST_LOCAL});
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
     // ═══════════════════════════════════════
     // Sync Timestamp Management
     // ═══════════════════════════════════════
