@@ -20,4 +20,9 @@
         android:title="@string/menu_more"
         app:showAsAction="ifRoom" />
 
+    <item
+        android:id="@+id/action_logout"
+        android:title="Đăng xuất"
+        app:showAsAction="never" />
+
 </menu>

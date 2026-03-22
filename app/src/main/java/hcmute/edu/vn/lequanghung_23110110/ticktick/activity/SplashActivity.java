@@ -15,6 +15,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SessionManager;
 
 public class SplashActivity extends AppCompatActivity {
 
@@ -36,12 +37,7 @@ public class SplashActivity extends AppCompatActivity {
         // Fade-in animation cho icon và text
         animateSplashElements();
 
-        // Chuyển sang MainActivity sau 2 giây
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            Intent intent = new Intent(SplashActivity.this, MainActivity.class);
-            startActivity(intent);
-            finish(); // Đóng SplashActivity để user không back lại được
-        }, SPLASH_DURATION);
+        new Handler(Looper.getMainLooper()).postDelayed(this::routeAfterSplash, SPLASH_DURATION);
     }
 
     private void animateSplashElements() {
@@ -66,5 +62,26 @@ public class SplashActivity extends AppCompatActivity {
         icon.startAnimation(fadeIn);
         appName.startAnimation(fadeInDelayed);
         tagline.startAnimation(fadeInMore);
+    }
+
+    private void routeAfterSplash() {
+        SessionManager sessionManager = new SessionManager(this);
+        SessionManager.SessionType sessionType = sessionManager.getSessionType();
+
+        Intent intent;
+        switch(sessionType) {
+            case USER:
+            case GUEST:
+                intent = new Intent(SplashActivity.this, MainActivity.class);
+                break;
+            case NONE:
+            default:
+                intent = new Intent(SplashActivity.this, LoginActivity.class);
+                break;
+        }
+
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 }

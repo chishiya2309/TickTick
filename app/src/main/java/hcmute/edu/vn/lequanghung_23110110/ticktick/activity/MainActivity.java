@@ -42,8 +42,15 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.ColorDrawable;
 import android.widget.PopupWindow;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -58,6 +65,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.AddListDialogFragment;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.DatePickerBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.TaskDetailBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.MoveTaskBottomSheet;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.SettingsBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskHeader;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskListItem;
@@ -68,8 +76,23 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.PinnedListAdapter;
 import android.widget.ImageView;
 import android.text.TextUtils;
 import android.widget.EditText;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.DailyBriefingScheduler;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.NotificationHelper;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SessionManager;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SyncManager;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.CalendarHelper;
+
+import androidx.credentials.ClearCredentialStateRequest;
+import androidx.credentials.CredentialManager;
+import androidx.credentials.exceptions.ClearCredentialException;
+import androidx.credentials.CredentialManagerCallback;
+import com.google.firebase.auth.FirebaseAuth;
+import androidx.annotation.NonNull;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.fragment.ContactFragment;
 
 public class MainActivity extends AppCompatActivity {
@@ -99,6 +122,32 @@ public class MainActivity extends AppCompatActivity {
 
     private ReminderService reminderService;
     private boolean isBound = false;
+    private final ExecutorService avatarLoaderExecutor = Executors.newSingleThreadExecutor();
+
+    // Google Calendar permission request (Just-In-Time)
+    private int pendingCalendarTaskId = -1;
+    private final ActivityResultLauncher<String[]> calendarPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
+                boolean allGranted = result.getOrDefault(Manifest.permission.READ_CALENDAR, false)
+                        && result.getOrDefault(Manifest.permission.WRITE_CALENDAR, false);
+                if (allGranted && pendingCalendarTaskId > 0) {
+                    syncTaskToCalendar(pendingCalendarTaskId);
+                } else if (!allGranted) {
+                    Toast.makeText(this, "Quyền lịch bị từ chối. Task không được đồng bộ lên Google Calendar.", Toast.LENGTH_SHORT).show();
+                }
+                pendingCalendarTaskId = -1;
+            });
+
+    private final BroadcastReceiver syncReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if ("hcmute.edu.vn.ticktick.SYNC_COMPLETED".equals(intent.getAction())) {
+                Log.i(TAG, "Nhận được tín hiệu Sync Completed, đang tải lại UI...");
+                refreshDrawer();
+                loadTasksForList(currentListId);
+            }
+        }
+    };
 
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
@@ -115,6 +164,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+
+        SessionManager sessionManager = new SessionManager(this);
+        if (sessionManager.getSessionType() == SessionManager.SessionType.NONE) {
+            Intent intent = new Intent(this, LoginActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+            return;
+        }
 
         dbHelper = TaskDatabaseHelper.getInstance(this);
 
@@ -151,9 +209,35 @@ public class MainActivity extends AppCompatActivity {
         }
 
         DailyBriefingScheduler.setupDailyBriefingWork(this);
+        SyncManager.schedulePeriodic(this);
         loadTasksForList(currentListId);
 
         checkPermissions();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (currentListId != -1) {
+            loadTasksForList(currentListId);
+        }
+        
+        // Xử lý intent từ notification (TaskId)
+        if (getIntent().hasExtra("EXTRA_TASK_ID")) {
+            int taskId = getIntent().getIntExtra("EXTRA_TASK_ID", -1);
+            getIntent().removeExtra("EXTRA_TASK_ID");
+            if (taskId != -1) {
+                showTaskDetailById(taskId);
+            }
+        }
+        
+        LocalBroadcastManager.getInstance(this).registerReceiver(syncReceiver, new IntentFilter("hcmute.edu.vn.ticktick.SYNC_COMPLETED"));
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(syncReceiver);
     }
 
     @Override
@@ -547,6 +631,10 @@ public class MainActivity extends AppCompatActivity {
         RecyclerView drawerRecyclerView = findViewById(R.id.drawer_recycler_view);
         drawerRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 
+        TextView drawerUserNameView = findViewById(R.id.drawer_user_name);
+        ImageView drawerAvatarView = findViewById(R.id.drawer_avatar);
+        bindDrawerUserProfile(drawerUserNameView, drawerAvatarView);
+
         pinnedRecyclerView = findViewById(R.id.drawer_pinned_recycler_view);
         pinnedRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
 
@@ -631,12 +719,71 @@ public class MainActivity extends AppCompatActivity {
                     startActivity(intent);
                 });
         findViewById(R.id.drawer_btn_settings)
-                .setOnClickListener(v -> Toast.makeText(this, "Cài đặt", Toast.LENGTH_SHORT).show());
+                .setOnClickListener(v -> {
+                    SettingsBottomSheet settingsSheet = new SettingsBottomSheet();
+                    settingsSheet.show(getSupportFragmentManager(), "SettingsBottomSheet");
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                });
 
         // Bottom bar
         findViewById(R.id.drawer_btn_add).setOnClickListener(this::showAddMenuPopup);
         findViewById(R.id.drawer_btn_filter).setOnClickListener(v -> Toast.makeText(this, "Bộ lọc", Toast.LENGTH_SHORT).show());
         refreshDrawerBadges();
+    }
+
+    private void bindDrawerUserProfile(TextView drawerUserNameView, ImageView drawerAvatarView) {
+        SessionManager sessionManager = new SessionManager(this);
+        SessionManager.SessionType sessionType = sessionManager.getSessionType();
+
+        if (sessionType == SessionManager.SessionType.USER) {
+            String displayName = sessionManager.getUserName();
+            drawerUserNameView.setText(TextUtils.isEmpty(displayName)
+                    ? getString(R.string.drawer_user_name)
+                    : displayName);
+
+            String avatarUrl = sessionManager.getUserAvatarUrl();
+            if (!TextUtils.isEmpty(avatarUrl)) {
+                loadDrawerAvatar(drawerAvatarView, avatarUrl);
+            } else {
+                drawerAvatarView.setImageResource(R.drawable.avatar);
+            }
+            return;
+        }
+
+        if (sessionType == SessionManager.SessionType.GUEST) {
+            drawerUserNameView.setText(R.string.drawer_guest_name);
+        } else {
+            drawerUserNameView.setText(R.string.drawer_user_name);
+        }
+        drawerAvatarView.setImageResource(R.drawable.avatar);
+    }
+
+    private void loadDrawerAvatar(ImageView drawerAvatarView, String avatarUrl) {
+        drawerAvatarView.setImageResource(R.drawable.avatar);
+        avatarLoaderExecutor.execute(() -> {
+            HttpURLConnection connection = null;
+            try {
+                URL url = new URL(avatarUrl);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setConnectTimeout(7000);
+                connection.setReadTimeout(7000);
+                connection.setDoInput(true);
+                connection.connect();
+
+                try (InputStream inputStream = connection.getInputStream()) {
+                    Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                    if (bitmap != null) {
+                        runOnUiThread(() -> drawerAvatarView.setImageBitmap(bitmap));
+                    }
+                }
+            } catch (Exception ex) {
+                Log.w(TAG, "Failed to load drawer avatar", ex);
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+            }
+        });
     }
 
     private List<DrawerMenuItem> buildDrawerMenuItems() {
@@ -713,6 +860,24 @@ public class MainActivity extends AppCompatActivity {
         drawerAdapter.notifyDataSetChanged();
     }
 
+    private void refreshDrawer() {
+        // 1. Refresh Pinned Lists
+        if (pinnedItems != null && pinnedAdapter != null) {
+            pinnedItems.clear();
+            pinnedItems.addAll(dbHelper.getPinnedLists());
+            pinnedAdapter.notifyDataSetChanged();
+            updatePinnedVisibility();
+        }
+
+        // 2. Refresh Main Drawer Lists
+        if (drawerItems != null && drawerAdapter != null) {
+            drawerItems.clear();
+            drawerItems.addAll(buildDrawerMenuItems());
+            // Badges will be updated inside refreshDrawerBadges called after this
+            refreshDrawerBadges();
+        }
+    }
+
     private void setupTaskRecyclerView() {
         taskRecyclerView = findViewById(R.id.task_recycler_view);
         taskRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -732,6 +897,24 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onTaskCheckedChanged(TaskModel task, boolean isChecked) {
                 dbHelper.updateTaskCompleted(task.getId(), isChecked);
+                
+                CalendarHelper calHelper = CalendarHelper.getInstance(MainActivity.this);
+                if (isChecked) {
+                    // Task hoàn thành → xóa event khỏi Calendar (nếu có)
+                    if (task.getCalendarEventId() > 0) {
+                        calHelper.deleteEvent(task.getCalendarEventId());
+                        dbHelper.updateTaskCalendarEventId(task.getId(), -1);
+                    }
+                } else {
+                    // Un-complete task → tạo lại event nếu có due date và cài đặt cho phép
+                    if (task.getDueDateMillis() > 0 && calHelper.hasCalendarPermission() && calHelper.isSyncEnabled()) {
+                        long eventId = calHelper.insertEvent(task);
+                        if (eventId > 0) {
+                            dbHelper.updateTaskCalendarEventId(task.getId(), eventId);
+                        }
+                    }
+                }
+                
                 loadTasksForList(currentListId);
                 rescheduleReminders();
             }
@@ -743,6 +926,17 @@ public class MainActivity extends AppCompatActivity {
             }
             @Override
             public void onTaskDeleteClicked(TaskModel task) {
+                // Hủy thông báo và báo thức trước khi xóa
+                NotificationHelper.cancelNotification(MainActivity.this, task.getId());
+                if (isBound && reminderService != null) {
+                    reminderService.cancelTaskReminder(task.getId());
+                }
+
+                // Xóa event trên Google Calendar nếu có
+                if (task.getCalendarEventId() > 0 && CalendarHelper.getInstance(MainActivity.this).isSyncEnabled()) {
+                    CalendarHelper.getInstance(MainActivity.this).deleteEvent(task.getCalendarEventId());
+                }
+             
                 dbHelper.deleteTask(task.getId());
                 loadTasksForList(currentListId);
                 rescheduleReminders();
@@ -762,7 +956,7 @@ public class MainActivity extends AppCompatActivity {
                 DatePickerBottomSheet datePicker = new DatePickerBottomSheet();
                 datePicker.setPreSelectedDate(task.getDueDateMillis());
                 datePicker.setOnDateSelectedListener((dateTag, dateMillis, reminders) -> {
-                    dbHelper.updateTaskDate(task.getId(), dateTag, dateMillis, reminders);
+                    hcmute.edu.vn.lequanghung_23110110.ticktick.utils.TaskActionHelper.updateTaskDateAndSync(MainActivity.this, task, dateTag, dateMillis, reminders);
                     loadTasksForList(currentListId);
                     rescheduleReminders();
                 });
@@ -867,22 +1061,31 @@ public class MainActivity extends AppCompatActivity {
             String title = inputTitle.getText().toString().trim();
             if (TextUtils.isEmpty(title)) { inputTitle.setError("Nhập tiêu đề task"); inputTitle.requestFocus(); return; }
             
-            // FIX: Gộp giờ phút vào Millis nếu có chọn thời gian
+            // Mốc thời gian đã được gộp giờ phút đầy đủ bên trong DatePickerBottomSheet
             long finalDueDate = selectedDateMillis[0];
-            if (finalDueDate > 0 && selectedHour[0] >= 0) {
-                Calendar cal = Calendar.getInstance();
-                cal.setTimeInMillis(finalDueDate);
-                cal.set(Calendar.HOUR_OF_DAY, selectedHour[0]);
-                cal.set(Calendar.MINUTE, selectedMinute[0]);
-                cal.set(Calendar.SECOND, 0);
-                cal.set(Calendar.MILLISECOND, 0);
-                finalDueDate = cal.getTimeInMillis();
-            }
 
             Log.d(TAG, "UI: Click Save. Title=" + title + ", FinalMillis=" + finalDueDate);
+            long newTaskId = dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate, selectedReminders);
+
+            // Sync với Google Calendar nếu có due date
+            if (finalDueDate > 0 && newTaskId > 0) {
+                CalendarHelper calHelper = CalendarHelper.getInstance(this);
+                if (calHelper.isSyncEnabled()) {
+                    if (calHelper.hasCalendarPermission()) {
+                        syncTaskToCalendar((int) newTaskId);
+                    } else {
+                        // Just-In-Time: xin quyền lần đầu
+                        pendingCalendarTaskId = (int) newTaskId;
+                        calendarPermissionLauncher.launch(new String[]{
+                                Manifest.permission.READ_CALENDAR,
+                                Manifest.permission.WRITE_CALENDAR
+                        });
+                    }
+                }
+            }
+            
 
             dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate, selectedReminders[0]);
-
             loadTasksForList(currentListId);
             rescheduleReminders();
             bottomSheet.dismiss();
@@ -890,6 +1093,21 @@ public class MainActivity extends AppCompatActivity {
         });
         bottomSheet.show();
         inputTitle.requestFocus();
+    }
+
+    /** Sync một task lên Google Calendar (gọi sau khi đã có quyền) */
+    private void syncTaskToCalendar(int taskId) {
+        CalendarHelper calHelper = CalendarHelper.getInstance(this);
+        if (!calHelper.isSyncEnabled()) return;
+        
+        TaskModel task = dbHelper.getTaskById(taskId);
+        if (task != null && task.getDueDateMillis() > 0) {
+            long eventId = calHelper.insertEvent(task);
+            if (eventId > 0) {
+                dbHelper.updateTaskCalendarEventId(taskId, eventId);
+                Toast.makeText(this, "Đã đồng bộ lên Google Calendar", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void setupBottomNavigation() {
@@ -929,6 +1147,25 @@ public class MainActivity extends AppCompatActivity {
         int id = item.getItemId();
         if (id == R.id.action_smart_suggest) Toast.makeText(this, "Gợi ý thông minh", Toast.LENGTH_SHORT).show();
         else if (id == R.id.action_more) Toast.makeText(this, "Thêm tùy chọn", Toast.LENGTH_SHORT).show();
+        else if (id == R.id.action_logout) {
+            handleLogout();
+            return true;
+        }
+        else if (id == R.id.action_music) {
+            Intent intent = new Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER);
+            intent.putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE, android.media.RingtoneManager.TYPE_ALARM);
+            intent.putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true);
+            intent.putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true);
+            
+            // Lấy ringtone đã lưu từ SharedPreferences để set mặc định cho Picker
+            android.content.SharedPreferences prefs = getSharedPreferences("TickTickPrefs", Context.MODE_PRIVATE);
+            String existingRingtone = prefs.getString("custom_ringtone", null);
+            if (existingRingtone != null) {
+                intent.putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, android.net.Uri.parse(existingRingtone));
+            }
+
+            intentLaunchRingtonePicker.launch(intent);
+        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -989,9 +1226,71 @@ public class MainActivity extends AppCompatActivity {
     };
     @Override protected void onStart() { super.onStart(); bindService(new Intent(this, ReminderService.class), connection, Context.BIND_AUTO_CREATE); }
     @Override protected void onStop() { super.onStop(); if (isBound) { unbindService(connection); isBound = false; } }
-    @Override protected void onResume() { super.onResume(); if (getIntent().hasExtra("EXTRA_TASK_ID")) { int taskId = getIntent().getIntExtra("EXTRA_TASK_ID", -1); getIntent().removeExtra("EXTRA_TASK_ID"); if (taskId != -1) showTaskDetailById(taskId); } }
+    @Override protected void onDestroy() { super.onDestroy(); avatarLoaderExecutor.shutdownNow(); }
     private void showTaskDetailById(int taskId) {
         TaskModel task = dbHelper.getTaskById(taskId);
         if (task != null) new TaskDetailBottomSheet(task).show(getSupportFragmentManager(), "TaskDetailBottomSheet");
     }
+
+    private void handleLogout() {
+        // Hiển thị dialog xác nhận
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Đăng xuất")
+                .setMessage("Bạn có chắc chắn muốn đăng xuất?")
+                .setNegativeButton("Hủy", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Đăng xuất", (dialog, which) -> {
+                    performLogout();
+                })
+                .show();
+    }
+
+    private void performLogout() {
+        try {
+            // 1. Sign out Firebase
+            FirebaseAuth.getInstance().signOut();
+
+            // 2. Cancel all sync jobs
+            SyncManager.cancelAll(this);
+
+            // 2b. Cancel all alarms and notifications
+            ReminderService.cancelAllReminders(this);
+
+            // 3. Clear credential state từ CredentialManager
+            CredentialManager credentialManager = CredentialManager.create(this);
+            credentialManager.clearCredentialStateAsync(
+                    new ClearCredentialStateRequest(),
+                    null,
+                    ContextCompat.getMainExecutor(this),
+                    new CredentialManagerCallback<Void, ClearCredentialException>() {
+                        @Override
+                        public void onResult(Void result) {
+                            Log.d(TAG, "Credential state cleared successfully");
+                        }
+
+                        @Override
+                        public void onError(@NonNull ClearCredentialException e) {
+                            Log.w(TAG, "Failed to clear credential state", e);
+                        }
+                    }
+            );
+
+            // 4. Clear session từ SessionManager
+            SessionManager sessionManager = new SessionManager(this);
+            sessionManager.clearSession();
+
+            // 4. Điều hướng về LoginActivity
+            Intent intent = new Intent(this, LoginActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+
+            // 5. Finish current activity stack
+            finishAffinity();
+
+            Toast.makeText(this, "Đã đăng xuất", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e(TAG, "Error during logout", e);
+            Toast.makeText(this, "Lỗi khi đăng xuất", Toast.LENGTH_SHORT).show();
+        }
+    }
 }
+

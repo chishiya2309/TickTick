@@ -277,4 +277,58 @@ public class ReminderService extends Service {
             strictPendingIntent.cancel();
         }
     }
+
+    /** Hủy tất cả alarm/notification (dùng khi logout) */
+    public static void cancelAllReminders(Context context) {
+        Log.d(TAG, "=== cancelAllReminders: Bắt đầu dọn dẹp ===");
+
+        // 1. Cancel tất cả notification đang hiển thị
+        android.app.NotificationManager nm =
+                (android.app.NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm != null) {
+            nm.cancelAll();
+            Log.d(TAG, "Đã xóa tất cả notification");
+        }
+
+        // 2. Cancel tất cả alarm cho từng task
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            TaskDatabaseHelper dbHelper = TaskDatabaseHelper.getInstance(context);
+            List<Integer> allTaskIds = dbHelper.getAllTaskIds();
+
+            for (int taskId : allTaskIds) {
+                // Cancel notification alarms (requestCode = taskId * 1000 + i)
+                for (int i = 0; i < 10; i++) {
+                    int requestCode = taskId * 1000 + i;
+                    Intent intent = new Intent(context, AlarmReceiver.class);
+                    intent.setAction(AlarmReceiver.ACTION_SHOW_NOTIFICATION);
+                    PendingIntent pi = PendingIntent.getBroadcast(
+                            context, requestCode, intent,
+                            PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
+                    if (pi != null) {
+                        alarmManager.cancel(pi);
+                        pi.cancel();
+                    }
+                }
+
+                // Cancel strict alarms (requestCode = taskId)
+                Intent strictIntent = new Intent(context, AlarmReceiver.class);
+                strictIntent.setAction(AlarmReceiver.ACTION_START_ALARM);
+                PendingIntent strictPi = PendingIntent.getBroadcast(
+                        context, taskId, strictIntent,
+                        PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
+                if (strictPi != null) {
+                    alarmManager.cancel(strictPi);
+                    strictPi.cancel();
+                }
+            }
+            Log.d(TAG, "Đã hủy alarm cho " + allTaskIds.size() + " tasks");
+        }
+
+        // 3. Cancel DailyBriefing WorkManager job
+        androidx.work.WorkManager.getInstance(context).cancelUniqueWork("daily_briefing_work");
+        Log.d(TAG, "Đã hủy DailyBriefing worker");
+        Log.d(TAG, "=== cancelAllReminders: Hoàn tất ===");
+    }
 }
+
