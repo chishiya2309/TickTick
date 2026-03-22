@@ -435,7 +435,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
-                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))));
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_CALENDAR_EVENT_ID)));
             tasks.add(task);
         }
         cursor.close();

@@ -159,6 +159,27 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+    private final ActivityResultLauncher<Intent> intentLaunchRingtonePicker =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    android.net.Uri uri = result.getData().getParcelableExtra(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI);
+                    if (uri != null) {
+                        getSharedPreferences("TickTickPrefs", Context.MODE_PRIVATE)
+                                .edit()
+                                .putString("custom_ringtone", uri.toString())
+                                .apply();
+                        Toast.makeText(this, "Đã lưu nhạc chuông mới", Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Người dùng chọn chế độ im lặng
+                        getSharedPreferences("TickTickPrefs", Context.MODE_PRIVATE)
+                                .edit()
+                                .putString("custom_ringtone", "silent")
+                                .apply();
+                        Toast.makeText(this, "Đã tắt nhạc chuông", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -1065,7 +1086,7 @@ public class MainActivity extends AppCompatActivity {
             long finalDueDate = selectedDateMillis[0];
 
             Log.d(TAG, "UI: Click Save. Title=" + title + ", FinalMillis=" + finalDueDate);
-            long newTaskId = dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate, selectedReminders);
+            long newTaskId = dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate, selectedReminders[0]);
 
             // Sync với Google Calendar nếu có due date
             if (finalDueDate > 0 && newTaskId > 0) {
@@ -1083,9 +1104,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             }
-            
-
-            dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate, selectedReminders[0]);
             loadTasksForList(currentListId);
             rescheduleReminders();
             bottomSheet.dismiss();

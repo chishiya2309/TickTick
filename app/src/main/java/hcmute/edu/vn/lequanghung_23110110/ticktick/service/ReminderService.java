@@ -300,8 +300,8 @@ public class ReminderService extends Service {
                 // Cancel notification alarms (requestCode = taskId * 1000 + i)
                 for (int i = 0; i < 10; i++) {
                     int requestCode = taskId * 1000 + i;
-                    Intent intent = new Intent(context, AlarmReceiver.class);
-                    intent.setAction(AlarmReceiver.ACTION_SHOW_NOTIFICATION);
+                    Intent intent = new Intent(context, Alarm.class);
+                    intent.setAction(Alarm.ACTION_SHOW_NOTIFICATION);
                     PendingIntent pi = PendingIntent.getBroadcast(
                             context, requestCode, intent,
                             PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
@@ -312,8 +312,8 @@ public class ReminderService extends Service {
                 }
 
                 // Cancel strict alarms (requestCode = taskId)
-                Intent strictIntent = new Intent(context, AlarmReceiver.class);
-                strictIntent.setAction(AlarmReceiver.ACTION_START_ALARM);
+                Intent strictIntent = new Intent(context, Alarm.class);
+                strictIntent.setAction(Alarm.ACTION_START_ALARM);
                 PendingIntent strictPi = PendingIntent.getBroadcast(
                         context, taskId, strictIntent,
                         PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
