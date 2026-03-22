@@ -93,10 +93,13 @@ import androidx.credentials.exceptions.ClearCredentialException;
 import androidx.credentials.CredentialManagerCallback;
 import com.google.firebase.auth.FirebaseAuth;
 import androidx.annotation.NonNull;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.fragment.ContactFragment;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "ALARM_DEBUG";
+    private static final int MENU_CONTACTS_ID = 100;
+
     private RecyclerView taskRecyclerView;
     private TaskAdapter taskAdapter;
     private List<TaskListItem> taskList;
@@ -105,6 +108,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView toolbarTitle;
     private ImageView toolbarListIcon;
     private TextView toolbarListEmoji;
+    private View fragmentContainer;
+    private FloatingActionButton fabAddTask;
 
     private TaskDatabaseHelper dbHelper;
     private int currentListId = 1;
@@ -154,27 +159,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
-    private final ActivityResultLauncher<Intent> intentLaunchRingtonePicker =
-            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                    android.net.Uri uri = result.getData().getParcelableExtra(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI);
-                    if (uri != null) {
-                        getSharedPreferences("TickTickPrefs", Context.MODE_PRIVATE)
-                                .edit()
-                                .putString("custom_ringtone", uri.toString())
-                                .apply();
-                        Toast.makeText(this, "Đã lưu nhạc chuông mới", Toast.LENGTH_SHORT).show();
-                    } else {
-                        // Người dùng chọn chế độ im lặng
-                        getSharedPreferences("TickTickPrefs", Context.MODE_PRIVATE)
-                                .edit()
-                                .putString("custom_ringtone", "silent")
-                                .apply();
-                        Toast.makeText(this, "Đã tắt nhạc chuông", Toast.LENGTH_SHORT).show();
-                    }
-                }
-            });
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -209,6 +193,8 @@ public class MainActivity extends AppCompatActivity {
         toolbarTitle = findViewById(R.id.toolbar_title);
         toolbarListIcon = findViewById(R.id.toolbar_list_icon);
         toolbarListEmoji = findViewById(R.id.toolbar_list_emoji);
+        fragmentContainer = findViewById(R.id.fragment_container);
+        fabAddTask = findViewById(R.id.fab_add_task);
 
         setupToolbar();
         setupDrawer();
@@ -354,6 +340,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadTasksForList(int listId, int iconResId, String emojiIcon) {
         currentListId = listId;
+        
+        // Hide fragment container when showing task list
+        if (fragmentContainer != null) fragmentContainer.setVisibility(View.GONE);
+        if (taskRecyclerView != null) taskRecyclerView.setVisibility(View.VISIBLE);
+        if (fabAddTask != null) fabAddTask.setVisibility(View.VISIBLE);
+
         String listName = dbHelper.getListNameById(listId);
         updateToolbarForList(listName, iconResId, emojiIcon);
 
@@ -598,6 +590,23 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void showContactFragment() {
+        if (fragmentContainer != null) {
+            fragmentContainer.setVisibility(View.VISIBLE);
+            taskRecyclerView.setVisibility(View.GONE);
+            emptyStateContainer.setVisibility(View.GONE);
+            fabAddTask.setVisibility(View.GONE);
+            
+            toolbarTitle.setText("Danh bạ");
+            toolbarListIcon.setVisibility(View.GONE);
+            toolbarListEmoji.setVisibility(View.GONE);
+
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, new ContactFragment())
+                    .commit();
+        }
+    }
+
     private int getIconResIdForList(String listName) {
         switch (listName) {
             case "Hôm nay": return R.drawable.ic_today;
@@ -651,7 +660,11 @@ public class MainActivity extends AppCompatActivity {
                 if (item.getType() == DrawerMenuItem.ItemType.SEPARATOR) return;
                 drawerAdapter.setSelectedPosition(position);
                 int listId = item.getId();
-                if (listId != -1) loadTasksForList(listId, item.getIconResId(), item.getEmojiIcon());
+                if (listId == MENU_CONTACTS_ID) {
+                    showContactFragment();
+                } else if (listId != -1) {
+                    loadTasksForList(listId, item.getIconResId(), item.getEmojiIcon());
+                }
                 drawerLayout.closeDrawer(GravityCompat.START);
             }
             @Override
@@ -779,6 +792,10 @@ public class MainActivity extends AppCompatActivity {
         items.add(new DrawerMenuItem(2, "Ngày mai", R.drawable.ic_quick_tomorrow, DrawerMenuItem.ItemType.NAVIGATION));
         items.add(new DrawerMenuItem(3, "7 ngày tới", R.drawable.ic_quick_next_week, DrawerMenuItem.ItemType.NAVIGATION));
         items.add(new DrawerMenuItem(4, "Hộp thư đến", R.drawable.ic_inbox, DrawerMenuItem.ItemType.NAVIGATION));
+        
+        // ADD CONTACTS ITEM HERE
+        items.add(new DrawerMenuItem(MENU_CONTACTS_ID, "Danh bạ", R.drawable.ic_personal, DrawerMenuItem.ItemType.NAVIGATION));
+
         items.add(DrawerMenuItem.separator());
         List<DrawerMenuItem> customLists = dbHelper.getAllCustomLists();
         for (DrawerMenuItem customItem : customLists) {
@@ -797,7 +814,6 @@ public class MainActivity extends AppCompatActivity {
     public void addNewListToDrawer(String name, String emojiIcon) {
         drawerItems.clear();
         drawerItems.addAll(buildDrawerMenuItems());
-        refreshDrawerBadges();
         drawerAdapter.notifyDataSetChanged();
         if (drawerItems.size() > 5) ((RecyclerView)findViewById(R.id.drawer_recycler_view)).smoothScrollToPosition(5);
     }
@@ -807,8 +823,7 @@ public class MainActivity extends AppCompatActivity {
         DrawerMenuItem item = drawerItems.get(position);
         item.setTitle(newName);
         item.setEmojiIcon(newEmojiIcon);
-        refreshDrawerBadges();
-        drawerAdapter.notifyDataSetChanged();
+        drawerAdapter.notifyItemChanged(position);
         if (item.isSelected()) updateToolbarForList(newName, item.getIconResId(), newEmojiIcon);
         if (pinnedItems != null && pinnedAdapter != null) {
             pinnedItems.clear();
@@ -821,7 +836,6 @@ public class MainActivity extends AppCompatActivity {
     public void deleteListFromDrawer(int listId, int position) {
         dbHelper.deleteList(listId);
         DrawerMenuItem deletedItem = drawerItems.remove(position);
-        refreshDrawerBadges();
         drawerAdapter.notifyItemRemoved(position);
         if (deletedItem.isSelected()) {
             DrawerMenuItem todayItem = drawerItems.get(0);
@@ -876,7 +890,6 @@ public class MainActivity extends AppCompatActivity {
                 bottomSheet.setOnTaskUpdatedListener(() -> {
                     Log.d(TAG, "UI: TaskDetail updated, calling rescheduleReminders");
                     loadTasksForList(currentListId);
-                    refreshDrawerBadges();
                     rescheduleReminders();
                 });
                 bottomSheet.show(getSupportFragmentManager(), "TaskDetailBottomSheet");
@@ -903,14 +916,12 @@ public class MainActivity extends AppCompatActivity {
                 }
                 
                 loadTasksForList(currentListId);
-                refreshDrawerBadges();
                 rescheduleReminders();
             }
             @Override
             public void onTaskPinClicked(TaskModel task) {
                 dbHelper.updateTaskPinned(task.getId(), !task.isPinned());
                 loadTasksForList(currentListId);
-                refreshDrawerBadges();
                 rescheduleReminders();
             }
             @Override
@@ -925,10 +936,9 @@ public class MainActivity extends AppCompatActivity {
                 if (task.getCalendarEventId() > 0 && CalendarHelper.getInstance(MainActivity.this).isSyncEnabled()) {
                     CalendarHelper.getInstance(MainActivity.this).deleteEvent(task.getCalendarEventId());
                 }
-                
+             
                 dbHelper.deleteTask(task.getId());
                 loadTasksForList(currentListId);
-                refreshDrawerBadges();
                 rescheduleReminders();
             }
             @Override
@@ -936,7 +946,6 @@ public class MainActivity extends AppCompatActivity {
                 MoveTaskBottomSheet moveSheet = new MoveTaskBottomSheet(task.getId(), task.getListId());
                 moveSheet.setOnTaskMovedListener((newListId, newListName, iconName) -> {
                     loadTasksForList(currentListId);
-                    refreshDrawerBadges();
                     rescheduleReminders();
                     showMoveToast(newListName, iconName);
                 });
@@ -952,9 +961,8 @@ public class MainActivity extends AppCompatActivity {
                     rescheduleReminders();
                 });
                 datePicker.setOnDateClearedListener(() -> {
-                    dbHelper.updateTaskDate(task.getId(), null, 0, new java.util.ArrayList<>());
+                    dbHelper.updateTaskDate(task.getId(), null, 0, new ArrayList<>());
                     loadTasksForList(currentListId);
-                    refreshDrawerBadges();
                     rescheduleReminders();
                 });
                 datePicker.show(getSupportFragmentManager(), "DatePickerBottomSheet");
@@ -970,7 +978,7 @@ public class MainActivity extends AppCompatActivity {
             reminderService.scheduleAllReminders();
         } else {
             Intent intent = new Intent(this, ReminderService.class);
-            androidx.core.content.ContextCompat.startForegroundService(this, intent);
+            startService(intent);
         }
     }
 
@@ -1019,7 +1027,7 @@ public class MainActivity extends AppCompatActivity {
         final long[] selectedDateMillis = { -1 };
         final int[] selectedHour = { -1 };
         final int[] selectedMinute = { -1 };
-        final java.util.List<String> selectedReminders = new java.util.ArrayList<>();
+        final List<String>[] selectedReminders = new List[]{ new ArrayList<>() };
 
         textCurrentList.setText(dbHelper.getListNameById(currentListId));
 
@@ -1028,8 +1036,7 @@ public class MainActivity extends AppCompatActivity {
             datePicker.setOnDateSelectedListener((dateTag, dateMillis, reminders) -> {
                 selectedDateTag[0] = dateTag;
                 selectedDateMillis[0] = dateMillis;
-                selectedReminders.clear();
-                if (reminders != null) selectedReminders.addAll(reminders);
+                selectedReminders[0] = reminders;
                 dateChipText.setText(dateTag);
                 dateChipContainer.setVisibility(View.VISIBLE);
                 actionDate.setVisibility(View.GONE);
@@ -1038,14 +1045,13 @@ public class MainActivity extends AppCompatActivity {
             datePicker.setOnDateClearedListener(() -> {
                 selectedDateTag[0] = ""; selectedDateMillis[0] = -1;
                 selectedHour[0] = -1; selectedMinute[0] = -1;
-                selectedReminders.clear();
+                selectedReminders[0] = new ArrayList<>();
                 dateChipContainer.setVisibility(View.GONE);
                 actionDate.setVisibility(View.VISIBLE);
             });
             datePicker.setOnTimeSelectedListener((h, m) -> { selectedHour[0] = h; selectedMinute[0] = m; });
             if (selectedDateMillis[0] > 0) datePicker.setPreSelectedDate(selectedDateMillis[0]);
             if (selectedHour[0] >= 0) datePicker.setPreSelectedTime(selectedHour[0], selectedMinute[0]);
-            if (!selectedReminders.isEmpty()) datePicker.setPreSelectedReminders(selectedReminders);
             datePicker.show(getSupportFragmentManager(), "date_picker");
         };
 
@@ -1059,7 +1065,6 @@ public class MainActivity extends AppCompatActivity {
             long finalDueDate = selectedDateMillis[0];
 
             Log.d(TAG, "UI: Click Save. Title=" + title + ", FinalMillis=" + finalDueDate);
-            
             long newTaskId = dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate, selectedReminders);
 
             // Sync với Google Calendar nếu có due date
@@ -1079,8 +1084,9 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             
+
+            dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate, selectedReminders[0]);
             loadTasksForList(currentListId);
-            refreshDrawerBadges();
             rescheduleReminders();
             bottomSheet.dismiss();
             Toast.makeText(this, "Đã thêm: " + title, Toast.LENGTH_SHORT).show();
@@ -1118,6 +1124,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void handleOnBackPressed() {
                 if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START);
+                else if (fragmentContainer != null && fragmentContainer.getVisibility() == View.VISIBLE) {
+                    loadTasksForList(currentListId); // Quay lại danh sách task
+                }
                 else { setEnabled(false); getOnBackPressedDispatcher().onBackPressed(); }
             }
         });

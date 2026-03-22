@@ -1,33 +1,31 @@
 package hcmute.edu.vn.lequanghung_23110110.ticktick.worker;
 
+import android.Manifest;
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Build;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
-import java.util.Calendar;
-import java.util.List;
-
 import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
-import hcmute.edu.vn.lequanghung_23110110.ticktick.activity.MainActivity;
-import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
-import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.service.AudioBriefingService;
 
-/**
- * Worker thực hiện Daily Briefing (Báo cáo đầu ngày) lúc 7h sáng mỗi ngày.
- */
+
 public class DailyBriefingWorker extends Worker {
 
     private static final String CHANNEL_ID = "daily_briefing_channel";
-    private static final String CHANNEL_NAME = "Daily Briefing";
-    private static final int NOTIFICATION_ID = 1001;
+    private static final int BRIEFING_NOTI_ID = 1001;
 
     public DailyBriefingWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
@@ -36,93 +34,100 @@ public class DailyBriefingWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
-        createNotificationChannel();
-        List<TaskModel> tasks = getTasksForToday();
-        showDailyBriefingNotification(tasks);
+        Context context = getApplicationContext();
+
+        // Tạo Notification Channel trước khi hiển thị
+        createNotificationChannel(context);
+
+        try {
+            int taskCount = 5;
+            showStickyBriefingNotification(context, taskCount);
+        } catch (Exception e) {
+            Log.e("TEST_WORKER", "LỖI CRASH NGẦM: " + e.getMessage(), e);
+        }
         return Result.success();
     }
 
-    private void createNotificationChannel() {
+    private void createNotificationChannel(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_HIGH // Đặt quan trọng cao để hiện thông báo lên màn hình
+                    "Daily Briefing",
+                    NotificationManager.IMPORTANCE_HIGH
             );
-            channel.setDescription("Thông báo báo cáo đầu ngày về các nhiệm vụ");
-
-            NotificationManager notificationManager = 
-                    getApplicationContext().getSystemService(NotificationManager.class);
-            if (notificationManager != null) {
-                notificationManager.createNotificationChannel(channel);
+            channel.setDescription("Channel for Daily Briefing notifications");
+            channel.setShowBadge(true);
+            channel.enableLights(true);
+            channel.enableVibration(true);
+            
+            NotificationManager manager = context.getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+                Log.d("TEST_WORKER", "Đã tạo notification channel: " + CHANNEL_ID);
+            } else {
+                Log.e("TEST_WORKER", "NotificationManager là null");
             }
-        }
-    }
-
-    private List<TaskModel> getTasksForToday() {
-        TaskDatabaseHelper dbHelper = TaskDatabaseHelper.getInstance(getApplicationContext());
-        Calendar cal = Calendar.getInstance();
-        cal.set(Calendar.HOUR_OF_DAY, 0);
-        cal.set(Calendar.MINUTE, 0);
-        cal.set(Calendar.SECOND, 0);
-        cal.set(Calendar.MILLISECOND, 0);
-        long startOfToday = cal.getTimeInMillis();
-
-        cal.add(Calendar.DAY_OF_MONTH, 1);
-        long endOfToday = cal.getTimeInMillis() - 1;
-
-        return dbHelper.getTodayAndOverdueTasks(startOfToday, endOfToday);
-    }
-
-    private void showDailyBriefingNotification(List<TaskModel> tasks) {
-        Context context = getApplicationContext();
-
-        Intent intent = new Intent(context, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-                context,
-                0,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-
-        NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
-
-        if (tasks.isEmpty()) {
-            inboxStyle.setBigContentTitle("Chúc mừng ngày mới! 🎉");
-            inboxStyle.addLine("Bạn không có nhiệm vụ nào hôm nay.");
         } else {
-            inboxStyle.setBigContentTitle("Báo cáo đầu ngày - " + tasks.size() + " nhiệm vụ");
-            int count = Math.min(tasks.size(), 5);
-            for (int i = 0; i < count; i++) {
-                TaskModel task = tasks.get(i);
-                String line = (i + 1) + ". " + task.getTitle();
-                if (task.getDueDateMillis() > 0 && task.getDueDateMillis() < System.currentTimeMillis()) {
-                    line = "⚠️ " + line + " (Quá hạn)";
-                }
-                inboxStyle.addLine(line);
-            }
-            if (tasks.size() > 5) {
-                inboxStyle.addLine("... và " + (tasks.size() - 5) + " nhiệm vụ khác");
-            }
+            Log.d("TEST_WORKER", "Android < 8.0, không cần tạo channel");
+        }
+    }
+
+    private void showStickyBriefingNotification(Context context, int taskCount) {
+        int pendingIntentFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            pendingIntentFlags |= PendingIntent.FLAG_IMMUTABLE;
         }
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_today)
-                .setContentTitle("Báo cáo đầu ngày")
-                .setContentText(tasks.isEmpty() ? 
-                        "Không có nhiệm vụ hôm nay" : 
-                        tasks.size() + " nhiệm vụ đang chờ bạn")
-                .setStyle(inboxStyle)
-                .setPriority(NotificationCompat.PRIORITY_HIGH) // Đặt Priority High
-                .setDefaults(NotificationCompat.DEFAULT_ALL)
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true);
+        Intent listenIntent = new Intent(context, AudioBriefingService.class);
+        listenIntent.setAction(AudioBriefingService.ACTION_LISTEN);
+        PendingIntent listenPendingIntent = PendingIntent.getService(
+                context, 100, listenIntent, pendingIntentFlags);
 
-        NotificationManager notificationManager = 
-                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (notificationManager != null) {
-            notificationManager.notify(NOTIFICATION_ID, builder.build());
+        Intent dismissIntent = new Intent(context, AudioBriefingService.class);
+        dismissIntent.setAction(AudioBriefingService.ACTION_DISMISS);
+        dismissIntent.putExtra("NOTIFICATION_ID", BRIEFING_NOTI_ID);
+        PendingIntent dismissPendingIntent = PendingIntent.getService(
+                context, 200, dismissIntent, pendingIntentFlags);
+
+        
+                
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentTitle("🌅 Chào buổi sáng!")
+                .setContentText("Bạn có các công việc ưu tiên đang chờ hôm nay.")
+                .setPriority(NotificationCompat.PRIORITY_MAX) // Priority cao nhất
+                .setOngoing(true) // Thông báo không thể vuốt để xóa
+                .setAutoCancel(false) // Không tự động hủy khi bấm
+                .addAction(android.R.drawable.ic_btn_speak_now, "🎧 Nghe lịch trình", listenPendingIntent)
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "✖ Bỏ qua", dismissPendingIntent);
+
+        // Hiển thị thông báo (Kiểm tra quyền POST_NOTIFICATIONS cho Android 13+)
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                Log.e("TEST_WORKER", "Không có quyền POST_NOTIFICATIONS");
+                return;
+            } else {
+                Log.d("TEST_WORKER", " Có quyền POST_NOTIFICATIONS");
+            }
+        }
+        
+        try {
+            Notification notification = builder.build();
+            notificationManager.notify(BRIEFING_NOTI_ID, notification);
+            
+            // Kiểm tra xem notification có thực sự được hiển thị không
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                NotificationManager nm = context.getSystemService(NotificationManager.class);
+                if (nm != null && nm.areNotificationsEnabled()) {
+                    Log.d("TEST_WORKER", " Notifications được bật cho app");
+                } else {
+                    Log.e("TEST_WORKER", " Notifications bị tắt cho app");
+                }
+            }
+        } catch (Exception e) {
+            Log.e("TEST_WORKER", " LỖI khi hiển thị notification: " + e.getMessage(), e);
         }
     }
 }

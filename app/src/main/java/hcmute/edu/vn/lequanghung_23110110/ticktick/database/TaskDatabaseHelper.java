@@ -252,7 +252,6 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 + COL_TASK_DUE_DATE + " INTEGER DEFAULT -1, "
                 + COL_TASK_COMPLETED + " INTEGER DEFAULT 0, "
                 + COL_TASK_IS_PINNED + " INTEGER DEFAULT 0, "
-                + COL_TASK_REMINDERS + " TEXT DEFAULT '', "
                 + COL_TASK_CREATED + " INTEGER DEFAULT (strftime('%s','now')), "
                 + COL_TASK_OWNER_TYPE + " TEXT NOT NULL DEFAULT '" + OWNER_TYPE_GUEST + "', "
                 + COL_TASK_OWNER_ID + " TEXT NOT NULL DEFAULT '" + OWNER_ID_GUEST_LOCAL + "', "
@@ -260,6 +259,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 + COL_TASK_SYNC_STATE + " TEXT DEFAULT '" + SYNC_STATE_SYNCED + "', "
                 + COL_TASK_DELETED_AT + " INTEGER DEFAULT 0, "
                 + COL_TASK_CALENDAR_EVENT_ID + " INTEGER DEFAULT -1, "
+                + COL_TASK_REMINDERS + " TEXT, "
                 + "FOREIGN KEY (" + COL_TASK_LIST_ID + ") REFERENCES "
                 + TABLE_LISTS + "(" + COL_LIST_ID + ")"
                 + ")");
@@ -402,6 +402,40 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
                     stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))),
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_CALENDAR_EVENT_ID)));
+            tasks.add(task);
+        }
+        cursor.close();
+        return tasks;
+    }
+
+    /** Lấy chính xác tasks của hôm nay (không lấy quá hạn) */
+    public List<TaskModel> getStrictlyTodayTasks(long startOfTodayMillis, long endOfTodayMillis) {
+        List<TaskModel> tasks = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+
+        // Chỉ lấy của hôm nay: due_date_millis >= startOfTodayMillis AND due_date_millis <= endOfTodayMillis
+        // AND chưa hoàn thành (COL_TASK_COMPLETED = 0)
+        String selection = "((" + COL_TASK_DUE_DATE + " >= ? AND " + COL_TASK_DUE_DATE + " <= ?) OR (" + COL_TASK_DATE_TAG + " = 'Hôm nay')) AND " + COL_TASK_COMPLETED + " = 0";
+
+        String[] selectionArgs = new String[] {
+                String.valueOf(startOfTodayMillis),
+                String.valueOf(endOfTodayMillis)
+        };
+
+        Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null,
+                COL_TASK_IS_PINNED + " DESC, " + COL_TASK_DUE_DATE + " ASC");
+
+        while (cursor.moveToNext()) {
+            TaskModel task = new TaskModel(
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_TITLE)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DESCRIPTION)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_LIST_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_DATE_TAG)),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))));
             tasks.add(task);
         }
         cursor.close();
@@ -775,7 +809,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 appendArgs(new String[] { String.valueOf(taskId) }, owner.ownerType, owner.ownerId));
     }
 
-    /** Cập nhật ngày của task */
+    /** Cập nhật ngày và lời nhắc của task */
     public void updateTaskDate(int taskId, String dateTag, long dueDateMillis, List<String> reminders) {
         SQLiteDatabase db = getWritableDatabase();
         OwnerScope owner = resolveOwnerScope();

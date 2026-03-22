@@ -73,8 +73,9 @@ public class DrawerMenuItem {
         return emojiIcon;
     }
 
-    public void setEmojiIcon(String emojiIcon) {
+    public DrawerMenuItem setEmojiIcon(String emojiIcon) {
         this.emojiIcon = emojiIcon;
+        return this;
     }
 
     public ItemType getType() {
