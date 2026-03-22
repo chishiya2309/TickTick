@@ -141,11 +141,19 @@ public class DatePickerBottomSheet extends BottomSheetDialogFragment {
                 String dateTag = sdf.format(selectedDate.getTime());
 
                 // Nếu có giờ, thêm vào tag
-                if (selectedHour >= 0) {
+                long finalMillis = selectedDate.getTimeInMillis();
+                if (selectedHour >= 0 && selectedMinute >= 0) {
                     dateTag += String.format(Locale.getDefault(), " %02d:%02d", selectedHour, selectedMinute);
+                    Calendar tempCal = Calendar.getInstance();
+                    tempCal.setTimeInMillis(finalMillis);
+                    tempCal.set(Calendar.HOUR_OF_DAY, selectedHour);
+                    tempCal.set(Calendar.MINUTE, selectedMinute);
+                    tempCal.set(Calendar.SECOND, 0);
+                    tempCal.set(Calendar.MILLISECOND, 0);
+                    finalMillis = tempCal.getTimeInMillis();
                 }
 
-                dateListener.onDateSelected(dateTag, selectedDate.getTimeInMillis(), new java.util.ArrayList<>(savedReminders));
+                dateListener.onDateSelected(dateTag, finalMillis, new java.util.ArrayList<>(savedReminders));
             }
             dismiss();
         });

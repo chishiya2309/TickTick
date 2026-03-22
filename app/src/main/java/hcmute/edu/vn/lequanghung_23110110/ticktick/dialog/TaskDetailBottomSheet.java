@@ -22,6 +22,7 @@ import java.util.Map;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.CalendarHelper;
 
 public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
 
@@ -173,6 +174,22 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
             if (task != null) {
                 task.setCompleted(isChecked);
                 dbHelper.updateTaskCompleted(task.getId(), isChecked);
+
+                CalendarHelper calHelper = CalendarHelper.getInstance(requireContext());
+                if (isChecked) {
+                    if (task.getCalendarEventId() > 0) {
+                        calHelper.deleteEvent(task.getCalendarEventId());
+                        dbHelper.updateTaskCalendarEventId(task.getId(), -1);
+                    }
+                } else {
+                    if (task.getDueDateMillis() > 0 && calHelper.hasCalendarPermission() && calHelper.isSyncEnabled()) {
+                        long eventId = calHelper.insertEvent(task);
+                        if (eventId > 0) {
+                            dbHelper.updateTaskCalendarEventId(task.getId(), eventId);
+                        }
+                    }
+                }
+
                 if (updateListener != null) {
                     updateListener.onTaskUpdated();
                 }
@@ -217,6 +234,15 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
 
                 if (hasChanged) {
                     dbHelper.updateTaskDetails(task.getId(), task.getTitle(), task.getDescription());
+
+                    // Cập nhật event trên Google Calendar nếu có
+                    if (task.getCalendarEventId() > 0) {
+                        CalendarHelper calHelper = CalendarHelper.getInstance(requireContext());
+                        if (calHelper.hasCalendarPermission() && calHelper.isSyncEnabled()) {
+                            calHelper.updateEvent(task.getCalendarEventId(), task);
+                        }
+                    }
+
                     if (updateListener != null) {
                         updateListener.onTaskUpdated();
                     }

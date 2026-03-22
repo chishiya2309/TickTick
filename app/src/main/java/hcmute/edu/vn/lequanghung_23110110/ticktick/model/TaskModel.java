@@ -14,10 +14,11 @@ public class TaskModel implements TaskListItem {
     private boolean isCompleted;
     private boolean isPinned;
     private List<String> reminders;
+    private long calendarEventId;
 
     // Constructor đầy đủ (từ DB)
     public TaskModel(int id, String title, String description, int listId, String dateTag, long dueDateMillis,
-            boolean isCompleted, boolean isPinned, List<String> reminders) {
+            boolean isCompleted, boolean isPinned, List<String> reminders, long calendarEventId) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -27,6 +28,7 @@ public class TaskModel implements TaskListItem {
         this.isCompleted = isCompleted;
         this.isPinned = isPinned;
         this.reminders = reminders != null ? reminders : new ArrayList<>();
+        this.calendarEventId = calendarEventId;
     }
 
     // Constructor tạo mới (chưa có id)
@@ -40,6 +42,15 @@ public class TaskModel implements TaskListItem {
         this.isCompleted = false;
         this.isPinned = false;
         this.reminders = reminders != null ? reminders : new ArrayList<>();
+        this.calendarEventId = -1;
+    }
+
+    public long getCalendarEventId() {
+        return calendarEventId;
+    }
+
+    public void setCalendarEventId(long calendarEventId) {
+        this.calendarEventId = calendarEventId;
     }
 
     // --- Getters & Setters ---

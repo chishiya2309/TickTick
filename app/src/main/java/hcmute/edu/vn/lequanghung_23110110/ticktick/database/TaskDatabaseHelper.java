@@ -24,7 +24,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SessionManager;
 public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "ticktick.db";
-    private static final int DB_VERSION = 11;
+    private static final int DB_VERSION = 12;
 
     // Thêm helper function parse List<String>
     private String listToString(List<String> list) {
@@ -80,6 +80,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     private static final String COL_TASK_UPDATED_AT = "updated_at";
     private static final String COL_TASK_SYNC_STATE = "sync_state";
     private static final String COL_TASK_DELETED_AT = "deleted_at";
+    private static final String COL_TASK_CALENDAR_EVENT_ID = "calendar_event_id";
 
     private static final String SYNC_STATE_SYNCED = "SYNCED";
     private static final String SYNC_STATE_PENDING_CREATE = "PENDING_CREATE";
@@ -216,6 +217,17 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    private void migrateToVersion12(SQLiteDatabase db) {
+        db.beginTransaction();
+        try {
+            addColumnIfMissing(db, TABLE_TASKS, COL_TASK_CALENDAR_EVENT_ID,
+                    "ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COL_TASK_CALENDAR_EVENT_ID + " INTEGER DEFAULT -1");
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE " + TABLE_LISTS + " ("
@@ -247,6 +259,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 + COL_TASK_UPDATED_AT + " INTEGER DEFAULT (strftime('%s','now')), "
                 + COL_TASK_SYNC_STATE + " TEXT DEFAULT '" + SYNC_STATE_SYNCED + "', "
                 + COL_TASK_DELETED_AT + " INTEGER DEFAULT 0, "
+                + COL_TASK_CALENDAR_EVENT_ID + " INTEGER DEFAULT -1, "
                 + "FOREIGN KEY (" + COL_TASK_LIST_ID + ") REFERENCES "
                 + TABLE_LISTS + "(" + COL_LIST_ID + ")"
                 + ")");
@@ -261,6 +274,9 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         if (oldVersion < 11) {
             migrateToVersion11(db);
+        }
+        if (oldVersion < 12) {
+            migrateToVersion12(db);
         }
     }
 
@@ -339,7 +355,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
-                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))));
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_CALENDAR_EVENT_ID)));
             tasks.add(task);
         }
         cursor.close();
@@ -383,7 +400,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
-                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))));
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_CALENDAR_EVENT_ID)));
             tasks.add(task);
         }
         cursor.close();
@@ -410,7 +428,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
-                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))));
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_CALENDAR_EVENT_ID)));
         }
         cursor.close();
         return task;
@@ -448,7 +467,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
-                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))));
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_CALENDAR_EVENT_ID)));
             tasks.add(task);
         }
         cursor.close();
@@ -485,7 +505,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
-                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))));
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_CALENDAR_EVENT_ID)));
             tasks.add(task);
         }
         cursor.close();
@@ -531,7 +552,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
-                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))));
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_CALENDAR_EVENT_ID)));
             tasks.add(task);
         }
         cursor.close();
@@ -776,6 +798,19 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         cv.put(COL_TASK_DUE_DATE, newDueDateMillis);
         cv.put(COL_TASK_UPDATED_AT, nowSeconds());
         cv.put(COL_TASK_SYNC_STATE, SYNC_STATE_PENDING_UPDATE);
+        db.update(TABLE_TASKS, cv,
+                COL_TASK_ID + " = ? AND " + taskOwnerFilter(),
+                appendArgs(new String[] { String.valueOf(taskId) }, owner.ownerType, owner.ownerId));
+    }
+
+    /** Cập nhật ID sự kiện trên Google Calendar */
+    public void updateTaskCalendarEventId(int taskId, long calendarEventId) {
+        SQLiteDatabase db = getWritableDatabase();
+        OwnerScope owner = resolveOwnerScope();
+        ContentValues cv = new ContentValues();
+        cv.put(COL_TASK_CALENDAR_EVENT_ID, calendarEventId);
+        // Do not update sync state to PENDING_UPDATE or UPDATED_AT, 
+        // as this field is local to the device's calendar integration.
         db.update(TABLE_TASKS, cv,
                 COL_TASK_ID + " = ? AND " + taskOwnerFilter(),
                 appendArgs(new String[] { String.valueOf(taskId) }, owner.ownerType, owner.ownerId));
@@ -1036,7 +1071,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
-                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS)))));
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_CALENDAR_EVENT_ID))));
         }
         cursor.close();
         return tasks;
@@ -1065,7 +1101,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                     cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_DUE_DATE)),
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_COMPLETED)) == 1,
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_TASK_IS_PINNED)) == 1,
-                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS)))));
+                    stringToList(cursor.getString(cursor.getColumnIndexOrThrow(COL_TASK_REMINDERS))),
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COL_TASK_CALENDAR_EVENT_ID))));
         }
         cursor.close();
         return tasks;

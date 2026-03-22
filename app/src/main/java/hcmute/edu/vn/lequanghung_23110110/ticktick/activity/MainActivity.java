@@ -65,6 +65,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.AddListDialogFragment;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.DatePickerBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.TaskDetailBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.MoveTaskBottomSheet;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.SettingsBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskHeader;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskListItem;
@@ -84,6 +85,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.DailyBriefingScheduler;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.NotificationHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SessionManager;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SyncManager;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.CalendarHelper;
 
 import androidx.credentials.ClearCredentialStateRequest;
 import androidx.credentials.CredentialManager;
@@ -116,6 +118,20 @@ public class MainActivity extends AppCompatActivity {
     private ReminderService reminderService;
     private boolean isBound = false;
     private final ExecutorService avatarLoaderExecutor = Executors.newSingleThreadExecutor();
+
+    // Google Calendar permission request (Just-In-Time)
+    private int pendingCalendarTaskId = -1;
+    private final ActivityResultLauncher<String[]> calendarPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
+                boolean allGranted = result.getOrDefault(Manifest.permission.READ_CALENDAR, false)
+                        && result.getOrDefault(Manifest.permission.WRITE_CALENDAR, false);
+                if (allGranted && pendingCalendarTaskId > 0) {
+                    syncTaskToCalendar(pendingCalendarTaskId);
+                } else if (!allGranted) {
+                    Toast.makeText(this, "Quyền lịch bị từ chối. Task không được đồng bộ lên Google Calendar.", Toast.LENGTH_SHORT).show();
+                }
+                pendingCalendarTaskId = -1;
+            });
 
     private final BroadcastReceiver syncReceiver = new BroadcastReceiver() {
         @Override
@@ -690,7 +706,11 @@ public class MainActivity extends AppCompatActivity {
                     startActivity(intent);
                 });
         findViewById(R.id.drawer_btn_settings)
-                .setOnClickListener(v -> Toast.makeText(this, "Cài đặt", Toast.LENGTH_SHORT).show());
+                .setOnClickListener(v -> {
+                    SettingsBottomSheet settingsSheet = new SettingsBottomSheet();
+                    settingsSheet.show(getSupportFragmentManager(), "SettingsBottomSheet");
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                });
 
         // Bottom bar
         findViewById(R.id.drawer_btn_add).setOnClickListener(this::showAddMenuPopup);
@@ -864,6 +884,24 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onTaskCheckedChanged(TaskModel task, boolean isChecked) {
                 dbHelper.updateTaskCompleted(task.getId(), isChecked);
+                
+                CalendarHelper calHelper = CalendarHelper.getInstance(MainActivity.this);
+                if (isChecked) {
+                    // Task hoàn thành → xóa event khỏi Calendar (nếu có)
+                    if (task.getCalendarEventId() > 0) {
+                        calHelper.deleteEvent(task.getCalendarEventId());
+                        dbHelper.updateTaskCalendarEventId(task.getId(), -1);
+                    }
+                } else {
+                    // Un-complete task → tạo lại event nếu có due date và cài đặt cho phép
+                    if (task.getDueDateMillis() > 0 && calHelper.hasCalendarPermission() && calHelper.isSyncEnabled()) {
+                        long eventId = calHelper.insertEvent(task);
+                        if (eventId > 0) {
+                            dbHelper.updateTaskCalendarEventId(task.getId(), eventId);
+                        }
+                    }
+                }
+                
                 loadTasksForList(currentListId);
                 refreshDrawerBadges();
                 rescheduleReminders();
@@ -881,6 +919,11 @@ public class MainActivity extends AppCompatActivity {
                 NotificationHelper.cancelNotification(MainActivity.this, task.getId());
                 if (isBound && reminderService != null) {
                     reminderService.cancelTaskReminder(task.getId());
+                }
+
+                // Xóa event trên Google Calendar nếu có
+                if (task.getCalendarEventId() > 0 && CalendarHelper.getInstance(MainActivity.this).isSyncEnabled()) {
+                    CalendarHelper.getInstance(MainActivity.this).deleteEvent(task.getCalendarEventId());
                 }
                 
                 dbHelper.deleteTask(task.getId());
@@ -904,7 +947,7 @@ public class MainActivity extends AppCompatActivity {
                 DatePickerBottomSheet datePicker = new DatePickerBottomSheet();
                 datePicker.setPreSelectedDate(task.getDueDateMillis());
                 datePicker.setOnDateSelectedListener((dateTag, dateMillis, reminders) -> {
-                    dbHelper.updateTaskDate(task.getId(), dateTag, dateMillis, reminders);
+                    hcmute.edu.vn.lequanghung_23110110.ticktick.utils.TaskActionHelper.updateTaskDateAndSync(MainActivity.this, task, dateTag, dateMillis, reminders);
                     loadTasksForList(currentListId);
                     rescheduleReminders();
                 });
@@ -1012,21 +1055,29 @@ public class MainActivity extends AppCompatActivity {
             String title = inputTitle.getText().toString().trim();
             if (TextUtils.isEmpty(title)) { inputTitle.setError("Nhập tiêu đề task"); inputTitle.requestFocus(); return; }
             
-            // FIX: Gộp giờ phút vào Millis nếu có chọn thời gian
+            // Mốc thời gian đã được gộp giờ phút đầy đủ bên trong DatePickerBottomSheet
             long finalDueDate = selectedDateMillis[0];
-            if (finalDueDate > 0 && selectedHour[0] >= 0) {
-                Calendar cal = Calendar.getInstance();
-                cal.setTimeInMillis(finalDueDate);
-                cal.set(Calendar.HOUR_OF_DAY, selectedHour[0]);
-                cal.set(Calendar.MINUTE, selectedMinute[0]);
-                cal.set(Calendar.SECOND, 0);
-                cal.set(Calendar.MILLISECOND, 0);
-                finalDueDate = cal.getTimeInMillis();
-            }
 
             Log.d(TAG, "UI: Click Save. Title=" + title + ", FinalMillis=" + finalDueDate);
             
-            dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate, selectedReminders);
+            long newTaskId = dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate, selectedReminders);
+
+            // Sync với Google Calendar nếu có due date
+            if (finalDueDate > 0 && newTaskId > 0) {
+                CalendarHelper calHelper = CalendarHelper.getInstance(this);
+                if (calHelper.isSyncEnabled()) {
+                    if (calHelper.hasCalendarPermission()) {
+                        syncTaskToCalendar((int) newTaskId);
+                    } else {
+                        // Just-In-Time: xin quyền lần đầu
+                        pendingCalendarTaskId = (int) newTaskId;
+                        calendarPermissionLauncher.launch(new String[]{
+                                Manifest.permission.READ_CALENDAR,
+                                Manifest.permission.WRITE_CALENDAR
+                        });
+                    }
+                }
+            }
             
             loadTasksForList(currentListId);
             refreshDrawerBadges();
@@ -1036,6 +1087,21 @@ public class MainActivity extends AppCompatActivity {
         });
         bottomSheet.show();
         inputTitle.requestFocus();
+    }
+
+    /** Sync một task lên Google Calendar (gọi sau khi đã có quyền) */
+    private void syncTaskToCalendar(int taskId) {
+        CalendarHelper calHelper = CalendarHelper.getInstance(this);
+        if (!calHelper.isSyncEnabled()) return;
+        
+        TaskModel task = dbHelper.getTaskById(taskId);
+        if (task != null && task.getDueDateMillis() > 0) {
+            long eventId = calHelper.insertEvent(task);
+            if (eventId > 0) {
+                dbHelper.updateTaskCalendarEventId(taskId, eventId);
+                Toast.makeText(this, "Đã đồng bộ lên Google Calendar", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void setupBottomNavigation() {

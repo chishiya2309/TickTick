@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.CalendarHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SessionManager;
 
 public class SyncWorker extends Worker {
@@ -113,6 +115,19 @@ public class SyncWorker extends Worker {
                         .set(data, SetOptions.merge()));
                 db.markTaskSynced(taskId);
                 Log.d(TAG, "Pushed task: " + taskId + " (" + syncState + ")");
+
+                // Google Calendar Sync (Cho các task vừa được chuyển vùng/tạo mới)
+                CalendarHelper calHelper = CalendarHelper.getInstance(getApplicationContext());
+                if (calHelper.isSyncEnabled() && calHelper.hasCalendarPermission()) {
+                    TaskModel task = db.getTaskById(taskId);
+                    if (task != null && !task.isCompleted() && task.getDueDateMillis() > 0 && task.getCalendarEventId() <= 0) {
+                        long eventId = calHelper.insertEvent(task);
+                        if (eventId > 0) {
+                            db.updateTaskCalendarEventId(taskId, eventId);
+                            Log.d(TAG, "Synced migrated/new task to Calendar: " + taskId);
+                        }
+                    }
+                }
             }
         }
     }
