@@ -157,7 +157,20 @@
                 android:textColor="@color/main_text_secondary"
                 android:textSize="15sp"
                 android:inputType="textCapSentences|textMultiLine"
-                android:minLines="1" />
+                android:minLines="1"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Task Images RecyclerView -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvTaskImages"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                android:layout_marginTop="8dp"
+                android:clipToPadding="false"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"/>
 
         </LinearLayout>
     </ScrollView>
@@ -191,15 +204,16 @@
             android:clickable="true"
             android:focusable="true"/>
 
-        <ImageView
+        <ImageButton
             android:id="@+id/detail_action_attach"
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:padding="6dp"
             android:layout_marginStart="12dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
             app:tint="@color/main_text_secondary"
-            android:src="@drawable/ic_action_more"
-            android:contentDescription="Attach"
+            android:src="@drawable/ic_attachment"
+            android:contentDescription="Đính kèm ảnh"
             android:clickable="true"
             android:focusable="true"/>
 

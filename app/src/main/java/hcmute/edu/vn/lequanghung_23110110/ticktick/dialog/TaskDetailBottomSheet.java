@@ -1,27 +1,43 @@
 package hcmute.edu.vn.lequanghung_23110110.ticktick.dialog;
 
+import android.app.Activity;
 import android.app.Dialog;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.TaskImageAdapter;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.ImageFileHelper;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.PermissionHelper;
 
 public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
 
@@ -29,6 +45,19 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
     private TaskDatabaseHelper dbHelper;
     private OnTaskUpdatedListener updateListener;
     private String highlightKeyword = "";
+    private TaskImageAdapter imageAdapter;
+    private RecyclerView rvTaskImages;
+    private List<String> taskImages;
+    
+    // Camera và Gallery launchers
+    private ActivityResultLauncher<Intent> cameraLauncher;
+    private ActivityResultLauncher<Intent> galleryLauncher;
+    private ActivityResultLauncher<String[]> cameraPermissionLauncher;
+    private ActivityResultLauncher<String[]> galleryPermissionLauncher;
+    
+    // Biến tạm để lưu URI ảnh từ camera
+    private Uri tempCameraImageUri;
+    private File tempCameraImageFile;
 
     public interface OnTaskUpdatedListener {
         void onTaskUpdated();
@@ -44,6 +73,92 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
 
     public void setOnTaskUpdatedListener(OnTaskUpdatedListener listener) {
         this.updateListener = listener;
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        initializeLaunchers();
+    }
+
+    /**
+     * Khởi tạo các ActivityResultLauncher cho Camera và Gallery
+     */
+    private void initializeLaunchers() {
+        // Camera Launcher - Xử lý kết quả chụp ảnh
+        cameraLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    // Ảnh đã được lưu vào tempCameraImageUri
+                    if (tempCameraImageUri != null) {
+                        onImageCaptured(tempCameraImageUri);
+                    }
+                } else {
+                    // User hủy hoặc có lỗi
+                    Toast.makeText(requireContext(), "Đã hủy chụp ảnh", Toast.LENGTH_SHORT).show();
+                    cleanupTempCameraFile();
+                }
+            }
+        );
+        
+        // Gallery Launcher - Xử lý kết quả chọn ảnh
+        galleryLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                    Uri selectedImageUri = result.getData().getData();
+                    if (selectedImageUri != null) {
+                        onImageSelected(selectedImageUri);
+                    }
+                } else {
+                    Toast.makeText(requireContext(), "Không chọn ảnh nào", Toast.LENGTH_SHORT).show();
+                }
+            }
+        );
+        
+        // Camera Permission Launcher
+        cameraPermissionLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestMultiplePermissions(),
+            permissions -> {
+                Boolean cameraGranted = permissions.get(android.Manifest.permission.CAMERA);
+                if (cameraGranted != null && cameraGranted) {
+                    // Permission được cấp, mở camera
+                    launchCamera();
+                } else {
+                    // Permission bị từ chối
+                    Toast.makeText(requireContext(), 
+                        "Cần quyền Camera để chụp ảnh", 
+                        Toast.LENGTH_LONG).show();
+                }
+            }
+        );
+        
+        // Gallery Permission Launcher
+        galleryPermissionLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestMultiplePermissions(),
+            permissions -> {
+                // Kiểm tra permission phù hợp với phiên bản Android
+                boolean granted = false;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    Boolean mediaGranted = permissions.get(android.Manifest.permission.READ_MEDIA_IMAGES);
+                    granted = mediaGranted != null && mediaGranted;
+                } else {
+                    Boolean storageGranted = permissions.get(android.Manifest.permission.READ_EXTERNAL_STORAGE);
+                    granted = storageGranted != null && storageGranted;
+                }
+                
+                if (granted) {
+                    // Permission được cấp, mở gallery
+                    launchGallery();
+                } else {
+                    // Permission bị từ chối
+                    Toast.makeText(requireContext(), 
+                        "Cần quyền truy cập ảnh để chọn từ thư viện", 
+                        Toast.LENGTH_LONG).show();
+                }
+            }
+        );
     }
 
     @Override
@@ -120,6 +235,7 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         super.onViewCreated(view, savedInstanceState);
 
         dbHelper = TaskDatabaseHelper.getInstance(requireContext());
+        taskImages = new ArrayList<>();
 
         // Header Views
         TextView textListName = view.findViewById(R.id.detail_list_name);
@@ -131,6 +247,42 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         TextView textDateTag = view.findViewById(R.id.detail_date_tag);
         EditText editTitle = view.findViewById(R.id.detail_task_title);
         EditText editDescription = view.findViewById(R.id.detail_task_description);
+
+        // Setup RecyclerView for images FIRST (before binding data)
+        rvTaskImages = view.findViewById(R.id.rvTaskImages);
+        LinearLayoutManager layoutManager = new LinearLayoutManager(requireContext(), 
+                LinearLayoutManager.HORIZONTAL, false);
+        rvTaskImages.setLayoutManager(layoutManager);
+        
+        imageAdapter = new TaskImageAdapter();
+        imageAdapter.setOnImageActionListener(new TaskImageAdapter.OnImageActionListener() {
+            @Override
+            public void onImageClick(String imageUri, int position) {
+                // TODO: Mở ảnh full screen
+                Toast.makeText(requireContext(), "Xem ảnh: " + position, Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onImageDelete(String imageUri, int position) {
+                // Xóa khỏi danh sách trước
+                if (position >= 0 && position < taskImages.size()) {
+                    taskImages.remove(position);
+                }
+                
+                // Sau đó xóa khỏi adapter
+                imageAdapter.removeImage(position);
+                updateImageVisibility();
+                
+                // Lưu vào database
+                if (task != null) {
+                    task.setImageUris(taskImages);
+                    dbHelper.updateTaskImages(task.getId(), taskImages);
+                }
+                
+                Toast.makeText(requireContext(), "Đã xóa ảnh", Toast.LENGTH_SHORT).show();
+            }
+        });
+        rvTaskImages.setAdapter(imageAdapter);
 
         // Bind data
         if (task != null) {
@@ -166,6 +318,13 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
                     listIcon.setVisibility(View.GONE);
                 }
             }
+            
+            // Load existing images
+            if (task.getImageUris() != null && !task.getImageUris().isEmpty()) {
+                taskImages = new ArrayList<>(task.getImageUris());
+                imageAdapter.setImages(taskImages);
+                updateImageVisibility();
+            }
         }
 
         // Actions
@@ -189,11 +348,185 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
             // "về màn hình activity_main" -> Dismiss
             dismiss();
         });
+
+        // Attach button
+        ImageButton btnAttach = view.findViewById(R.id.detail_action_attach);
+        btnAttach.setOnClickListener(v -> showImageAttachmentOptions());
+    }
+
+    private void showImageAttachmentOptions() {
+        ImageAttachmentBottomSheet bottomSheet = new ImageAttachmentBottomSheet();
+        bottomSheet.setOnImageSourceSelectedListener(new ImageAttachmentBottomSheet.OnImageSourceSelectedListener() {
+            @Override
+            public void onCameraSelected() {
+                openCamera();
+            }
+
+            @Override
+            public void onGallerySelected() {
+                openGallery();
+            }
+        });
+        bottomSheet.show(getParentFragmentManager(), "ImageAttachmentBottomSheet");
+    }
+
+    /**
+     * Mở Camera để chụp ảnh
+     * Tự động kiểm tra và request permission nếu cần
+     */
+    private void openCamera() {
+        // Kiểm tra thiết bị có camera không
+        if (!PermissionHelper.hasCamera(requireContext())) {
+            Toast.makeText(requireContext(), 
+                "Thiết bị không có camera", 
+                Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Kiểm tra permission
+        if (!PermissionHelper.hasCameraPermission(requireContext())) {
+            // Chưa có permission, request
+            cameraPermissionLauncher.launch(PermissionHelper.getCameraPermissions());
+            return;
+        }
+        
+        // Đã có permission, mở camera
+        launchCamera();
+    }
+    
+    /**
+     * Mở Gallery để chọn ảnh
+     * Tự động kiểm tra và request permission nếu cần
+     */
+    private void openGallery() {
+        // Kiểm tra permission
+        if (!PermissionHelper.hasGalleryPermission(requireContext())) {
+            // Chưa có permission, request
+            galleryPermissionLauncher.launch(PermissionHelper.getGalleryPermissions());
+            return;
+        }
+        
+        // Đã có permission, mở gallery
+        launchGallery();
+    }
+
+    /**
+     * Launch Camera Intent
+     */
+    private void launchCamera() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        
+        // Kiểm tra có app Camera không
+        if (takePictureIntent.resolveActivity(requireContext().getPackageManager()) == null) {
+            Toast.makeText(requireContext(), 
+                "Không tìm thấy ứng dụng Camera", 
+                Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Tạo file để lưu ảnh
+        tempCameraImageFile = ImageFileHelper.createImageFile(requireContext());
+        if (tempCameraImageFile == null) {
+            Toast.makeText(requireContext(), 
+                "Không thể tạo file ảnh", 
+                Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Chuyển File thành Uri an toàn qua FileProvider
+        tempCameraImageUri = ImageFileHelper.getUriForFile(requireContext(), tempCameraImageFile);
+        if (tempCameraImageUri == null) {
+            Toast.makeText(requireContext(), 
+                "Lỗi FileProvider", 
+                Toast.LENGTH_SHORT).show();
+            cleanupTempCameraFile();
+            return;
+        }
+        
+        // Gửi Uri cho Camera app
+        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, tempCameraImageUri);
+        
+        // Launch camera
+        cameraLauncher.launch(takePictureIntent);
+    }
+    
+    /**
+     * Launch Gallery Intent
+     */
+    private void launchGallery() {
+        Intent pickPhotoIntent = new Intent(
+            Intent.ACTION_PICK, 
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        );
+        
+        // Chỉ chọn ảnh
+        pickPhotoIntent.setType("image/*");
+        
+        // Launch gallery
+        galleryLauncher.launch(pickPhotoIntent);
+    }
+
+    /**
+     * Callback khi chụp ảnh thành công
+     */
+    private void onImageCaptured(Uri imageUri) {
+        addImageToTask(imageUri.toString());
+        
+        // Reset temp variables
+        tempCameraImageUri = null;
+        tempCameraImageFile = null;
+    }
+    
+    /**
+     * Callback khi chọn ảnh từ gallery thành công
+     */
+    private void onImageSelected(Uri imageUri) {
+        addImageToTask(imageUri.toString());
+    }
+    
+    /**
+     * Thêm ảnh vào task và cập nhật giao diện
+     */
+    private void addImageToTask(String imageUri) {
+        taskImages.add(imageUri);
+        imageAdapter.addImage(imageUri);
+        updateImageVisibility();
+        
+        // Lưu vào database
+        if (task != null) {
+            task.setImageUris(taskImages);
+            dbHelper.updateTaskImages(task.getId(), taskImages);
+        }
+        
+        Toast.makeText(requireContext(), "Đã thêm ảnh", Toast.LENGTH_SHORT).show();
+    }
+    
+    /**
+     * Dọn dẹp file tạm nếu có lỗi
+     */
+    private void cleanupTempCameraFile() {
+        if (tempCameraImageFile != null && tempCameraImageFile.exists()) {
+            tempCameraImageFile.delete();
+        }
+        tempCameraImageUri = null;
+        tempCameraImageFile = null;
+    }
+
+    private void updateImageVisibility() {
+        if (taskImages.isEmpty()) {
+            rvTaskImages.setVisibility(View.GONE);
+        } else {
+            rvTaskImages.setVisibility(View.VISIBLE);
+        }
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        
+        // Dọn dẹp file tạm nếu còn
+        cleanupTempCameraFile();
+        
         // Save modifications when the dialog is dismissed
         if (task != null) {
             View view = getView();

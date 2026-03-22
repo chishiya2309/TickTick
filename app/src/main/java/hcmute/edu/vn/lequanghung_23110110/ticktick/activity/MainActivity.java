@@ -1,6 +1,7 @@
 package hcmute.edu.vn.lequanghung_23110110.ticktick.activity;
 
 import android.Manifest;
+import android.app.Activity;
 import android.app.AlarmManager;
 import android.content.ComponentName;
 import android.content.Context;
@@ -8,9 +9,11 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.Menu;
@@ -53,9 +56,11 @@ import java.util.Map;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.R;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.DrawerMenuAdapter;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.TaskAdapter;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.TaskImageAdapter;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.AddListDialogFragment;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.DatePickerBottomSheet;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.ImageAttachmentBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.TaskDetailBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.dialog.MoveTaskBottomSheet;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.DrawerMenuItem;
@@ -63,6 +68,8 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskHeader;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskListItem;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.TaskModel;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.service.ReminderService;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.ImageFileHelper;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.PermissionHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.TaskSwipeHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.PinnedListAdapter;
 import android.widget.ImageView;
@@ -71,6 +78,8 @@ import android.widget.EditText;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.DailyBriefingScheduler;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.fragment.ContactFragment;
+
+import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -100,6 +109,17 @@ public class MainActivity extends AppCompatActivity {
     private ReminderService reminderService;
     private boolean isBound = false;
 
+    // Image attachment for add task dialog
+    private ActivityResultLauncher<Intent> addTaskCameraLauncher;
+    private ActivityResultLauncher<Intent> addTaskGalleryLauncher;
+    private ActivityResultLauncher<String[]> addTaskCameraPermissionLauncher;
+    private ActivityResultLauncher<String[]> addTaskGalleryPermissionLauncher;
+    private Uri addTaskTempCameraImageUri;
+    private File addTaskTempCameraImageFile;
+    private List<String> addTaskImageUris = new ArrayList<>();
+    private TaskImageAdapter addTaskImageAdapter;
+    private RecyclerView addTaskRvImages;
+
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {
@@ -109,6 +129,80 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(this, "Ứng dụng cần quyền thông báo để nhắc nhở", Toast.LENGTH_LONG).show();
                 }
             });
+
+    // Initialize image launchers for add task dialog
+    {
+        // Camera Launcher
+        addTaskCameraLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    if (addTaskTempCameraImageUri != null) {
+                        addTaskImageUris.add(addTaskTempCameraImageUri.toString());
+                        if (addTaskImageAdapter != null) {
+                            addTaskImageAdapter.addImage(addTaskTempCameraImageUri.toString());
+                            updateAddTaskImageVisibility();
+                        }
+                        Toast.makeText(this, "Đã thêm ảnh", Toast.LENGTH_SHORT).show();
+                    }
+                    addTaskTempCameraImageUri = null;
+                    addTaskTempCameraImageFile = null;
+                }
+            }
+        );
+        
+        // Gallery Launcher
+        addTaskGalleryLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                    Uri selectedImageUri = result.getData().getData();
+                    if (selectedImageUri != null) {
+                        addTaskImageUris.add(selectedImageUri.toString());
+                        if (addTaskImageAdapter != null) {
+                            addTaskImageAdapter.addImage(selectedImageUri.toString());
+                            updateAddTaskImageVisibility();
+                        }
+                        Toast.makeText(this, "Đã thêm ảnh", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        );
+        
+        // Camera Permission Launcher
+        addTaskCameraPermissionLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestMultiplePermissions(),
+            permissions -> {
+                Boolean cameraGranted = permissions.get(android.Manifest.permission.CAMERA);
+                if (cameraGranted != null && cameraGranted) {
+                    launchAddTaskCamera();
+                } else {
+                    Toast.makeText(this, "Cần quyền Camera để chụp ảnh", Toast.LENGTH_LONG).show();
+                }
+            }
+        );
+        
+        // Gallery Permission Launcher
+        addTaskGalleryPermissionLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestMultiplePermissions(),
+            permissions -> {
+                boolean granted = false;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    Boolean mediaGranted = permissions.get(android.Manifest.permission.READ_MEDIA_IMAGES);
+                    granted = mediaGranted != null && mediaGranted;
+                } else {
+                    Boolean storageGranted = permissions.get(android.Manifest.permission.READ_EXTERNAL_STORAGE);
+                    granted = storageGranted != null && storageGranted;
+                }
+                
+                if (granted) {
+                    launchAddTaskGallery();
+                } else {
+                    Toast.makeText(this, "Cần quyền truy cập ảnh để chọn từ thư viện", Toast.LENGTH_LONG).show();
+                }
+            }
+        );
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -828,6 +922,39 @@ public class MainActivity extends AppCompatActivity {
         View dateChipContainer = sheetView.findViewById(R.id.date_chip_container);
         TextView dateChipText = sheetView.findViewById(R.id.date_chip_text);
         View actionDate = sheetView.findViewById(R.id.action_date);
+        View actionAttachImage = sheetView.findViewById(R.id.action_attach_image);
+
+        // Reset image list for new task
+        addTaskImageUris = new ArrayList<>();
+        
+        // Setup RecyclerView for images
+        addTaskRvImages = sheetView.findViewById(R.id.rvAddTaskImages);
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this, 
+                LinearLayoutManager.HORIZONTAL, false);
+        addTaskRvImages.setLayoutManager(layoutManager);
+        
+        addTaskImageAdapter = new TaskImageAdapter();
+        addTaskImageAdapter.setOnImageActionListener(new TaskImageAdapter.OnImageActionListener() {
+            @Override
+            public void onImageClick(String imageUri, int position) {
+                Toast.makeText(MainActivity.this, "Xem ảnh: " + position, Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onImageDelete(String imageUri, int position) {
+                // Xóa khỏi danh sách trước
+                if (position >= 0 && position < addTaskImageUris.size()) {
+                    addTaskImageUris.remove(position);
+                }
+                
+                // Sau đó xóa khỏi adapter
+                addTaskImageAdapter.removeImage(position);
+                updateAddTaskImageVisibility();
+                Toast.makeText(MainActivity.this, "Đã xóa ảnh", Toast.LENGTH_SHORT).show();
+            }
+        });
+        addTaskRvImages.setAdapter(addTaskImageAdapter);
+        addTaskRvImages.setVisibility(View.GONE);
 
         final String[] selectedDateTag = { "" };
         final long[] selectedDateMillis = { -1 };
@@ -863,6 +990,24 @@ public class MainActivity extends AppCompatActivity {
 
         actionDate.setOnClickListener(v -> openDatePicker.run());
         dateChipContainer.setOnClickListener(v -> openDatePicker.run());
+        
+        // Attach image button click
+        actionAttachImage.setOnClickListener(v -> {
+            ImageAttachmentBottomSheet imageBottomSheet = new ImageAttachmentBottomSheet();
+            imageBottomSheet.setOnImageSourceSelectedListener(new ImageAttachmentBottomSheet.OnImageSourceSelectedListener() {
+                @Override
+                public void onCameraSelected() {
+                    openAddTaskCamera();
+                }
+
+                @Override
+                public void onGallerySelected() {
+                    openAddTaskGallery();
+                }
+            });
+            imageBottomSheet.show(getSupportFragmentManager(), "ImageAttachmentBottomSheet");
+        });
+        
         sheetView.findViewById(R.id.btn_submit_task).setOnClickListener(v -> {
             String title = inputTitle.getText().toString().trim();
             if (TextUtils.isEmpty(title)) { inputTitle.setError("Nhập tiêu đề task"); inputTitle.requestFocus(); return; }
@@ -881,7 +1026,9 @@ public class MainActivity extends AppCompatActivity {
 
             Log.d(TAG, "UI: Click Save. Title=" + title + ", FinalMillis=" + finalDueDate);
 
-            dbHelper.insertTask(title, inputDescription.getText().toString().trim(), currentListId, selectedDateTag[0], finalDueDate, selectedReminders[0]);
+            // Insert task with images directly
+            long taskId = dbHelper.insertTask(title, inputDescription.getText().toString().trim(), 
+                currentListId, selectedDateTag[0], finalDueDate, selectedReminders[0], addTaskImageUris);
 
             loadTasksForList(currentListId);
             rescheduleReminders();
@@ -993,5 +1140,73 @@ public class MainActivity extends AppCompatActivity {
     private void showTaskDetailById(int taskId) {
         TaskModel task = dbHelper.getTaskById(taskId);
         if (task != null) new TaskDetailBottomSheet(task).show(getSupportFragmentManager(), "TaskDetailBottomSheet");
+    }
+
+    // ========== Image Attachment Helper Methods for Add Task Dialog ==========
+    
+    private void openAddTaskCamera() {
+        if (!PermissionHelper.hasCamera(this)) {
+            Toast.makeText(this, "Thiết bị không có camera", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        if (!PermissionHelper.hasCameraPermission(this)) {
+            addTaskCameraPermissionLauncher.launch(PermissionHelper.getCameraPermissions());
+            return;
+        }
+        
+        launchAddTaskCamera();
+    }
+    
+    private void openAddTaskGallery() {
+        if (!PermissionHelper.hasGalleryPermission(this)) {
+            addTaskGalleryPermissionLauncher.launch(PermissionHelper.getGalleryPermissions());
+            return;
+        }
+        
+        launchAddTaskGallery();
+    }
+    
+    private void launchAddTaskCamera() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        
+        if (takePictureIntent.resolveActivity(getPackageManager()) == null) {
+            Toast.makeText(this, "Không tìm thấy ứng dụng Camera", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        addTaskTempCameraImageFile = ImageFileHelper.createImageFile(this);
+        if (addTaskTempCameraImageFile == null) {
+            Toast.makeText(this, "Không thể tạo file ảnh", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        addTaskTempCameraImageUri = ImageFileHelper.getUriForFile(this, addTaskTempCameraImageFile);
+        if (addTaskTempCameraImageUri == null) {
+            Toast.makeText(this, "Lỗi FileProvider", Toast.LENGTH_SHORT).show();
+            if (addTaskTempCameraImageFile != null && addTaskTempCameraImageFile.exists()) {
+                addTaskTempCameraImageFile.delete();
+            }
+            return;
+        }
+        
+        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, addTaskTempCameraImageUri);
+        addTaskCameraLauncher.launch(takePictureIntent);
+    }
+    
+    private void launchAddTaskGallery() {
+        Intent pickPhotoIntent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        pickPhotoIntent.setType("image/*");
+        addTaskGalleryLauncher.launch(pickPhotoIntent);
+    }
+    
+    private void updateAddTaskImageVisibility() {
+        if (addTaskRvImages != null) {
+            if (addTaskImageUris.isEmpty()) {
+                addTaskRvImages.setVisibility(View.GONE);
+            } else {
+                addTaskRvImages.setVisibility(View.VISIBLE);
+            }
+        }
     }
 }

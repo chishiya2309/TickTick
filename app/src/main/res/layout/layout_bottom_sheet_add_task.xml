@@ -42,6 +42,21 @@
         android:maxLines="5"
         android:importantForAutofill="no" />
 
+    <!-- ═══ Task Images RecyclerView ═══ -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvAddTaskImages"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:clipToPadding="false"
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp"/>
+
     <!-- ═══ Action Bar Row 1: Date Chip + Icons ═══ -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -117,6 +132,18 @@
             android:clickable="true"
             android:focusable="true"
             android:contentDescription="Nhắc nhở" />
+
+        <!-- Đính kèm ảnh -->
+        <ImageView
+            android:id="@+id/action_attach_image"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
+            android:src="@drawable/ic_attachment"
+            android:scaleType="centerInside"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Đính kèm ảnh" />
 
         <!-- Thêm tùy chọn -->
         <ImageView

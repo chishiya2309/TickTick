@@ -45,6 +45,11 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
+    
+    // Glide for image loading
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
+    
     // WorkManager cho Daily Briefing
     implementation("androidx.work:work-runtime:2.11.1")
     testImplementation(libs.junit)
