@@ -9,6 +9,7 @@ public class TaskActionHelper {
     public static void updateTaskDateAndSync(Context context, TaskModel task, String dateTag, long dateMillis, List<String> reminders) {
         TaskDatabaseHelper dbHelper = TaskDatabaseHelper.getInstance(context);
         dbHelper.updateTaskDate(task.getId(), dateTag, dateMillis, reminders);
+        SyncManager.syncNow(context, "task_date_updated");
         
         CalendarHelper calHelper = CalendarHelper.getInstance(context);
         if (calHelper.hasCalendarPermission() && calHelper.isSyncEnabled()) {

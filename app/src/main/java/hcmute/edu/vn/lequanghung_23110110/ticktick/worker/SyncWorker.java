@@ -65,6 +65,10 @@ public class SyncWorker extends Worker {
             return Result.success();
         } catch (Exception e) {
             Log.e(TAG, "Sync failed", e);
+            
+            android.content.Intent intent = new android.content.Intent("hcmute.edu.vn.ticktick.SYNC_FAILED");
+            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+
             return Result.retry();
         }
     }

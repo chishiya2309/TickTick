@@ -25,6 +25,7 @@ import hcmute.edu.vn.lequanghung_23110110.ticktick.activity.MainActivity;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.adapter.MoveTaskListAdapter;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
 import hcmute.edu.vn.lequanghung_23110110.ticktick.model.ListModel;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SyncManager;
 
 public class MoveTaskBottomSheet extends BottomSheetDialogFragment {
 
@@ -111,6 +112,7 @@ public class MoveTaskBottomSheet extends BottomSheetDialogFragment {
 
             // Move the task
             dbHelper.moveTaskToList(taskId, list.getId());
+            SyncManager.syncNow(requireContext(), "task_moved");
 
             // Notify listener (to show toast and reload UI)
             if (listener != null) {
@@ -139,6 +141,9 @@ public class MoveTaskBottomSheet extends BottomSheetDialogFragment {
 
                             // 1. Save to Database
                             long newListId = dbHelper.insertList(name, randomEmoji);
+                            if (newListId > 0) {
+                                SyncManager.syncNow(requireContext(), "list_created");
+                            }
 
                             // 2. Update MainActivity Drawer
                             if (getActivity() instanceof MainActivity) {
@@ -147,6 +152,7 @@ public class MoveTaskBottomSheet extends BottomSheetDialogFragment {
 
                             // 3. Move the task immediately
                             dbHelper.moveTaskToList(taskId, (int) newListId);
+                            SyncManager.syncNow(requireContext(), "task_moved");
 
                             // 4. Trigger Toast and close bottom sheet
                             if (listener != null) {

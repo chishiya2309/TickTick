@@ -11,6 +11,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import hcmute.edu.vn.lequanghung_23110110.ticktick.database.TaskDatabaseHelper;
+import hcmute.edu.vn.lequanghung_23110110.ticktick.utils.SyncManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -116,7 +117,10 @@ public class AddListDialogFragment extends DialogFragment {
                     mainActivity.updateListInDrawer(finalEditListId, name, emoji, finalEditPosition);
                     Toast.makeText(getContext(), "Đã cập nhật: " + name, Toast.LENGTH_SHORT).show();
                 } else {
-                    dbHelper.insertList(name, emoji);
+                    long newListId = dbHelper.insertList(name, emoji);
+                    if (newListId > 0) {
+                        SyncManager.syncNow(requireContext(), "list_created");
+                    }
                     mainActivity.addNewListToDrawer(name, emoji);
                     Toast.makeText(getContext(), "Đã tạo: " + name, Toast.LENGTH_SHORT).show();
                 }

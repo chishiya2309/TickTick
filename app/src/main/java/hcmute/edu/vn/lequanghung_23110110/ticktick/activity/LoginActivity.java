@@ -6,8 +6,15 @@ import androidx.core.content.ContextCompat;
 import androidx.credentials.Credential;
 import androidx.credentials.CredentialManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
+import android.app.ProgressDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.IntentFilter;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.credentials.CredentialManagerCallback;
@@ -36,6 +43,11 @@ public class LoginActivity extends AppCompatActivity {
     private FirebaseAuth firebaseAuth;
     private CredentialManager credentialManager;
     private SessionManager sessionManager;
+
+    private ProgressDialog syncDialog;
+    private BroadcastReceiver syncReceiver;
+    private Handler syncTimeoutHandler;
+    private Runnable syncTimeoutRunnable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -164,14 +176,35 @@ public class LoginActivity extends AppCompatActivity {
                     : null;
 
             // Phase 5: Check if there's guest data to migrate
-            TaskDatabaseHelper dbHelper = TaskDatabaseHelper.getInstance(this);
-            int guestDataCount = dbHelper.countGuestData();
+            // NEW LOGIC: Query Firestore first to see if account is setup
+            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .document(uid)
+                    .get()
+                    .addOnCompleteListener(fsTask -> {
+                        boolean isSetup = false;
+                        if (fsTask.isSuccessful() && fsTask.getResult() != null && fsTask.getResult().exists()) {
+                            Boolean flag = fsTask.getResult().getBoolean("is_account_setup");
+                            if (flag != null && flag) {
+                                isSetup = true;
+                            }
+                        }
 
-            if (guestDataCount > 0) {
-                showGuestMergeDialog(uid, email, displayName, photoUrl, dbHelper, guestDataCount);
-            } else {
-                completeLogin(uid, email, displayName, photoUrl);
-            }
+                        TaskDatabaseHelper dbHelper = TaskDatabaseHelper.getInstance(this);
+                        int guestDataCount = dbHelper.countGuestData();
+
+                        if (isSetup) {
+                            Log.i(TAG, "Account is already setup on Firestore. Clearing local guest data and pulling.");
+                            dbHelper.clearGuestData(); 
+                            completeLogin(uid, email, displayName, photoUrl);
+                        } else {
+                            if (guestDataCount > 0) {
+                                showGuestMergeDialog(uid, email, displayName, photoUrl, dbHelper, guestDataCount);
+                            } else {
+                                completeLogin(uid, email, displayName, photoUrl);
+                            }
+                        }
+                    });
         });
     }
 
@@ -195,14 +228,74 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void completeLogin(String uid, String email, String displayName, String photoUrl) {
+        // Mark account as setup so we don't prompt merge on next reinstall
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("is_account_setup", true);
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("users").document(uid)
+                .set(data, com.google.firebase.firestore.SetOptions.merge());
+
         sessionManager.setUserSession(uid, email, displayName, photoUrl);
 
+        // RESET LAST SYNC TO 0 TO FORCE A FULL PULL FROM CLOUD ON LOGIN
+        // This fixes the bug where AutoBackup restores SharedPreferences (lastSync > 0) 
+        // but the SQLite database is wiped, causing the app to skip pulling old data.
+        TaskDatabaseHelper.getInstance(this).setLastSyncTimestamp(0L);
+
         if (NetworkUtils.isConnected(this)) {
-            SyncManager.syncNow(this, "login_success_network");
+            showSyncProgressDialogAndSync();
         } else {
             Log.d(TAG, "Skip immediate cloud sync because there is no active network connection");
+            SyncManager.schedulePeriodic(this);
+            navigateToMain();
         }
+    }
 
+    private void showSyncProgressDialogAndSync() {
+        syncDialog = new ProgressDialog(this);
+        syncDialog.setMessage("Đang đồng bộ dữ liệu tải về...");
+        syncDialog.setCancelable(false);
+        syncDialog.show();
+
+        syncReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if ("hcmute.edu.vn.ticktick.SYNC_COMPLETED".equals(intent.getAction()) ||
+                    "hcmute.edu.vn.ticktick.SYNC_FAILED".equals(intent.getAction())) {
+                    Log.i(TAG, "Received sync broadcast: " + intent.getAction());
+                    finishSyncAndNavigate();
+                }
+            }
+        };
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("hcmute.edu.vn.ticktick.SYNC_COMPLETED");
+        filter.addAction("hcmute.edu.vn.ticktick.SYNC_FAILED");
+        LocalBroadcastManager.getInstance(this).registerReceiver(syncReceiver, filter);
+
+        SyncManager.syncNow(this, "login_success_network");
+
+        syncTimeoutHandler = new Handler(Looper.getMainLooper());
+        syncTimeoutRunnable = () -> {
+            Log.w(TAG, "Sync timeout reached during login");
+            finishSyncAndNavigate();
+        };
+        // Timeout 15s để không block user vĩnh viễn nếu backend/mạng rất chậm hoặc bị ngắt
+        syncTimeoutHandler.postDelayed(syncTimeoutRunnable, 15000); 
+    }
+
+    private void finishSyncAndNavigate() {
+        if (syncTimeoutHandler != null && syncTimeoutRunnable != null) {
+            syncTimeoutHandler.removeCallbacks(syncTimeoutRunnable);
+        }
+        if (syncReceiver != null) {
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(syncReceiver);
+            syncReceiver = null;
+        }
+        if (syncDialog != null && syncDialog.isShowing()) {
+            syncDialog.dismiss();
+            syncDialog = null;
+        }
         SyncManager.schedulePeriodic(this);
         navigateToMain();
     }
