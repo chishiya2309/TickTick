@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "792430100649",
+    "project_id": "ticktick-prod",
+    "storage_bucket": "ticktick-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:792430100649:android:74063f2f757d724072e9b8",
+        "android_client_info": {
+          "package_name": "hcmute.edu.vn.lequanghung_23110110.ticktick"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "792430100649-46v4dt9fg0ia488u649h91t8jpcsdjtv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "hcmute.edu.vn.lequanghung_23110110.ticktick",
+            "certificate_hash": "524839eafcfe505d08384fb7fa732d866442ec56"
+          }
+        },
+        {
+          "client_id": "792430100649-ctb5de9hgmuvc8obpo7c7b7hdajajj26.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5vbdsNrzEqTPX93j8twRE1J0zHJRj_u8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "792430100649-ctb5de9hgmuvc8obpo7c7b7hdajajj26.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
