@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "792430100649-qr23l6fipoboqu6ru3ppf1riq5npodl4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "hcmute.edu.vn.lequanghung_23110110.ticktick",
+            "certificate_hash": "3219041b6db1d96727136c0eea77c437da68425f"
+          }
+        },
+        {
           "client_id": "792430100649-umvfqj77b41ufgqaquif826c85te9kgh.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
